@@ -1,0 +1,16 @@
+# Lewys Hub — réglages Netlify (rien à saisir à la main dans Netlify)
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Les pages se mettent à jour dès qu'une nouvelle version est publiée
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Robots-Tag = "noindex, nofollow"
