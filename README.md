@@ -68,3 +68,13 @@ Restent dans le navigateur de chaque personne : sa clé Claude, sa session Googl
 | `netlify.toml`, `package.json` | Réglages lus par Netlify |
 | `dev-server.mjs` | Test sur un poste : `npm run dev`, puis `http://localhost:8888` |
 | `public/hub-bridge.js` | Facultatif : à ajouter aux applications hébergées ailleurs pour que Mira lise leur page |
+
+## Slack et Notion
+
+Chaque personne relie son compte depuis « Mes connexions ». Avant cela, l'administrateur crée une application Slack et une intégration Notion, une seule fois : le guide pas à pas et les adresses à recopier sont dans Administration → Connexions & temps.
+
+- **Slack** : le Hub affiche les conversations de la personne, lui permet d'y répondre, et signale les nouveaux messages (accueil, menu et notification en bas à droite). Vérification toutes les 75 secondes.
+- **Notion** : il n'est pas affiché dans le Hub. Il sert de source à Mira, qui peut y chercher et y lire.
+- **Mira** peut lire Slack et Notion. Elle ne peut ni envoyer de message ni modifier une page.
+- Slack et Notion interdisent l'affichage de leur application dans un autre site : c'est pourquoi le Hub affiche leur contenu lui-même.
+- Les accès Slack et Notion de chacun restent sur le serveur du Hub, jamais dans le navigateur.

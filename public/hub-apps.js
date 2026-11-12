@@ -9,6 +9,7 @@ const APP_ICON = { slack:'https://www.google.com/s2/favicons?domain=slack.com&sz
 const mdInline = t => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<i>$2</i>')
   .replace(/\[([^\]]+)\]\(((?:https?|mailto):[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>').replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>').replace(/\n/g, '<br>');
 
+const plainMd = t => String(t || '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\*\*|`/g, '');   // aperçus : texte sans mise en forme
 const Apps = {
   conn(){ return (Remote.on && Remote.conn) || {} },
   slackOn(){ return !!this.conn().slack }, notionOn(){ return !!this.conn().notion },
@@ -37,7 +38,7 @@ const Apps = {
         : `<button class="btn" type="button" data-appon="${prov}">Connecter mon compte ${name}</button>`}
       <div class="err" data-apperr="${prov}"></div></div>`;
     return row('slack', 'Slack', 'Vos conversations dans le Hub, avec les notifications', !!c.slack, c.slack ? `Compte : <b>${esc(c.slack.name || 'vous')}</b> · espace ${esc(c.slack.team)}` : '', c.slackReady)
-      + row('notion', 'Notion', 'Vos pages dans le Hub, lisibles par Mira (lecture seule)', !!c.notion, c.notion ? `Espace : <b>${esc(c.notion.workspace)}</b>` : '', c.notionReady);
+      + row('notion', 'Notion', 'Lu par Mira pour ses réponses et le point du jour (lecture seule)', !!c.notion, c.notion ? `Espace : <b>${esc(c.notion.workspace)}</b>` : '', c.notionReady);
   },
   wireConn(root, redraw){
     root.querySelectorAll('[data-appcfg]').forEach(a => a.onclick = closeModal);
@@ -63,12 +64,13 @@ const SlackMod = {
   convs:null, teamId:'', cur:null, msgs:[], unread:[], known:new Set(), first:true, _t:null, _c:null,
   seen(){ return UStore.get('slackSeen', {}) },
   setSeen(id, ts){ const s = this.seen(); if(!s[id] || ts > s[id]){ s[id] = ts; UStore.set('slackSeen', s) } },
-  start(){ this.stop(); if(!Apps.slackOn()) return; this.first = true; this.known = new Set(); this.poll(); this._t = setInterval(() => this.poll(), 120000) },
+  start(){ this.stop(); if(!Apps.slackOn()) return; this.first = true; this.known = new Set(); this.poll(); this._t = setInterval(() => this.poll(), 75000) },
   stop(){ clearInterval(this._t); clearInterval(this._c); this._t = this._c = null; this.unread = []; this.convs = null; this.cur = null; const n = document.getElementById('notifs'); if(n) n.innerHTML = '' },
   count(){ return this.unread.reduce((s, u) => s + u.messages.length, 0) },
   async poll(){
     if(!Apps.slackOn() || document.hidden) return;
-    let r; try{ r = await Remote.req('GET', '/slack/feed') }catch(e){ Apps.lost(e); return }
+    let r; try{ r = await Remote.req('GET', '/slack/feed') }catch(e){ Apps.lost(e); this.error = e.message; this.first = false; this.renderHome(); return }
+    this.error = (r.errors && r.errors.length) ? r.errors.join(' · ') : ''; this.checked = r.checked; this.total = r.total;
     this.teamId = r.teamId || this.teamId; const seen = this.seen();
     this.unread = (r.unread || []).map(u => Object.assign({}, u, { messages:u.messages.filter(m => !(seen[u.id] && m.ts <= seen[u.id])) })).filter(u => u.messages.length && u.id !== this.openId());
     // on prévient une seule fois par message, et jamais pour ceux déjà en attente à la connexion
@@ -79,7 +81,7 @@ const SlackMod = {
   notify(u, m){
     const box = document.getElementById('notifs'); if(!box) return;
     const el = document.createElement('button'); el.className = 'notif';
-    el.innerHTML = `<img src="${APP_ICON.slack}" alt=""><span><b>${esc(m.name)}${u.kind === 'im' ? '' : ' · ' + esc((u.kind === 'mpim' ? '' : '#') + u.name)}</b><span>${esc(m.text.slice(0, 140) || (m.files.length ? 'Fichier partagé' : 'Nouveau message'))}</span></span><i aria-label="Fermer">${ic('x')}</i>`;
+    el.innerHTML = `<img src="${APP_ICON.slack}" alt=""><span><b>${esc(m.name)}${u.kind === 'im' ? '' : ' · ' + esc((u.kind === 'mpim' ? '' : '#') + u.name)}</b><span>${esc(plainMd(m.text).slice(0, 140) || (m.files.length ? 'Fichier partagé' : 'Nouveau message'))}</span></span><i aria-label="Fermer">${ic('x')}</i>`;
     el.onclick = e => { el.remove(); if(!e.target.closest('i')) location.hash = '#/slack/' + u.id };
     box.appendChild(el); while(box.children.length > 4) box.firstChild.remove(); setTimeout(() => el.remove(), 12000);
   },
@@ -89,8 +91,9 @@ const SlackMod = {
     if(!Apps.slackOn()){ el.innerHTML = ''; return }
     el.innerHTML = `<div class="card infos"><div class="sec-head"><div><div class="eyebrow">Slack</div><h2>Messages non lus</h2></div><a class="btn ghost sm" href="#/slack">Ouvrir Slack</a></div>
       ${this.unread.length ? this.unread.slice(0, 6).map(u => { const m = u.messages[u.messages.length - 1];
-        return `<a class="ml" href="#/slack/${u.id}"><span class="ml-av">${esc(initials(u.kind === 'im' ? u.name : m.name))}</span><span class="ml-b"><b>${this.label(u)}</b><span>${u.kind === 'im' ? '' : esc(m.name) + ' : '}${esc(m.text.slice(0, 120) || 'Fichier partagé')}</span></span><em class="sl-n">${u.messages.length}${u.more ? '+' : ''}</em></a>` }).join('')
-      : `<p class="quiet">${this.first ? 'Chargement…' : 'Aucun nouveau message.'}</p>`}</div>`;
+        return `<a class="ml" href="#/slack/${u.id}"><span class="ml-av">${esc(initials(u.kind === 'im' ? u.name : m.name))}</span><span class="ml-b"><b>${this.label(u)}</b><span>${u.kind === 'im' ? '' : esc(m.name) + ' : '}${esc(plainMd(m.text).slice(0, 120) || 'Fichier partagé')}</span></span><em class="sl-n">${u.messages.length}${u.more ? '+' : ''}</em></a>` }).join('')
+      : `<p class="quiet">${this.first ? 'Chargement…' : 'Aucun nouveau message.'}</p>`}
+      ${this.error ? `<p class="note" style="margin:10px 0 0;color:var(--danger)">Slack n’a pas pu être consulté entièrement : ${esc(this.error)}</p>` : ''}</div>`;
   },
   async renderPage(id){
     Shell.head('Messagerie', 'Slack', Apps.slackOn() ? 'Espace ' + Apps.conn().slack.team + ' · vos conversations, sans quitter le Hub.' : 'Vos conversations Slack dans le Hub.', Apps.slackOn() && this.teamId ? `<a class="btn white sm" href="https://app.slack.com/client/${esc(this.teamId)}" target="_blank" rel="noopener">Ouvrir Slack ${ic('ext')}</a>` : '');
@@ -245,7 +248,7 @@ async function adminApps(){
       <li>Plus bas, dans « <b>User</b> Token Scopes », ajoutez : <code>${esc(c.slackScopes.split(',').join(', '))}</code></li>
       <li>Menu « Basic Information » : copiez « Client ID » et « Client Secret » et collez-les ci-dessus.</li></ol></details>
     <h2 style="font-size:20px;margin-top:28px">Notion</h2>
-    <p class="note">Pour que chacun relie son Notion, créez une intégration Notion publique, une seule fois.</p>
+    <p class="note">Notion n’est pas affiché dans le Hub : il sert uniquement de source à Mira, qui peut y chercher et y lire (jamais modifier). Pour que chacun relie son Notion, créez une intégration Notion publique, une seule fois.</p>
     <div class="row2">${f('noId', 'OAuth client ID', c.notionClientId, 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')}${f('noSec', 'OAuth client secret', '', c.notionSecret ? 'Déjà enregistré — laisser vide pour le conserver' : 'Collez le client secret', true)}</div>
     <details class="howto"><summary>Comment créer l’intégration Notion (10 minutes)</summary><ol>
       <li>Ouvrez <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noopener">notion.so/profile/integrations</a> → « New integration », nom « Lewys Hub », type <b>Public</b>.</li>

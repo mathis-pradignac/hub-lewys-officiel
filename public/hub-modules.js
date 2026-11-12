@@ -40,7 +40,7 @@ const Shell = {
     document.getElementById('fabMira').onclick = () => Mira.toggle();
     document.getElementById('burger').onclick = () => document.getElementById('side').classList.toggle('open');
     document.getElementById('navConnex').onclick = () => Connexions.open();
-    SlackMod.start(); NotionMod.stack = [];
+    SlackMod.start();
   },
   stop(){ clearInterval(this._t); SlackMod.stop(); Mira.close(); if(Mira.ctl) Mira.ctl.abort() },
   refresh(){
@@ -53,8 +53,8 @@ const Shell = {
       link('#/', 'home', 'Accueil', todo ? '<i class="side-dot" title="Heures du jour à saisir"></i>' : '') +
       `<button class="side-link" id="sideMira">${ic('spark')}<span>Mira</span><em class="side-tag">IA</em></button>` +
       link('#/infos', 'calendar', 'Infos & agenda') + link('#/presse', 'news', 'Revue de presse') +
-      `<a class="side-link ${hash.startsWith('#/slack') ? 'on' : ''}" href="#/slack"><i class="side-ico"><img src="${APP_ICON.slack}" alt=""></i><span>Slack</span>${SlackMod.count() ? `<em class="side-n">${SlackMod.count()}</em>` : ''}</a>` +
-      `<a class="side-link ${hash.startsWith('#/notion') ? 'on' : ''}" href="#/notion"><i class="side-ico"><img src="${APP_ICON.notion}" alt=""></i><span>Notion</span></a>` +
+      `<a class="side-link ${hash === '#/slack' || (hash.startsWith('#/slack') && !SlackMod.unread.some(u => hash === '#/slack/' + u.id)) ? 'on' : ''}" href="#/slack"><i class="side-ico"><img src="${APP_ICON.slack}" alt=""></i><span>Slack</span>${SlackMod.count() ? `<em class="side-n" title="Messages non lus">${SlackMod.count()}</em>` : ''}</a>` +
+      SlackMod.unread.slice(0, 6).map(u => `<a class="side-link side-sub" href="#/slack/${u.id}" title="${esc(plainMd(u.messages[u.messages.length - 1].text).slice(0, 120))}"><i class="side-bul"></i><span>${u.kind === 'im' || u.kind === 'mpim' ? '' : '# '}${esc(u.name)}</span><em class="side-n">${u.messages.length}${u.more ? '+' : ''}</em></a>`).join('') +
       cats.map(c => `<div class="side-cat" style="--vc:${voletOf(c).color === '#1D1D1B' ? '#fff' : voletOf(c).color === '#3721CA' ? '#ADB7F9' : '#D9B68E'}">${esc(c)}</div>` +
         tools.filter(t => (t.category || 'Autres') === c).map(t => t.mode === 'tab'
           ? `<a class="side-link tool" href="${esc(safeUrl(t.url) || '#')}" target="_blank" rel="noopener"><i class="side-ico">${toolGlyph(t)}</i><span>${esc(t.name)}</span><em class="side-ext">${ic('ext')}</em></a>`

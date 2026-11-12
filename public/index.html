@@ -867,7 +867,6 @@ function route(){
   else if(h[0]==='admin'){ renderAdmin(h[1]); if(Remote.on) Remote.freshen().then(ch=>{ const n=location.hash.replace(/^#\/?/,'').split('/'); if(ch && n[0]==='admin' && !$('#modalSlot').innerHTML) renderAdmin(n[1]) }) }
   else if(h[0]==='infos'){ document.title='Infos & agenda · Lewys Hub'; Infos.renderPage() }
   else if(h[0]==='slack'){ document.title='Slack · Lewys Hub'; SlackMod.renderPage(h[1]) }
-  else if(h[0]==='notion'){ document.title='Notion · Lewys Hub'; NotionMod.renderPage() }
   else if(h[0]==='presse'){ document.title='Revue de presse · Lewys Hub'; Press.renderPage() }
   else renderHome();
 }
