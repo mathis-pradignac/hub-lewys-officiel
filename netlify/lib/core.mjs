@@ -281,15 +281,21 @@ export function createApi(kv, opts = {}){
       if(b === 'send' && m === 'POST'){ const inc = await body(); if(!/^[A-Z0-9]{6,20}$/.test(inc.channel || '') || !String(inc.text || '').trim()) throw new HttpError(400, 'Message vide.');
         const j = await slack(c0.token, 'chat.postMessage', { channel:inc.channel, text:str(inc.text, 4000) }); return json({ ts:j.ts }) }
       if(b === 'feed' && m === 'GET'){   // messages non lus : messages directs d'abord, puis canaux
-        const convs = await slackConvs(c0, users), pickd = [...convs.filter(x => x.kind === 'im' || x.kind === 'mpim').slice(0, 20), ...convs.filter(x => x.kind === 'channel' || x.kind === 'private').slice(0, 15)];
-        const res = await batches(pickd, 12, async cv => { const info = (await slack(c0.token, 'conversations.info', { channel:cv.id })).channel || {};
-          if(info.unread_count_display === 0) return null;
-          const last = info.last_read && info.last_read !== '0000000000.000000' ? info.last_read : String(Date.now() / 1000 - 86400);
-          if(info.latest && info.latest.ts && info.latest.ts <= last) return null;
-          const h = await slack(c0.token, 'conversations.history', { channel:cv.id, oldest:last, limit:'6' });
-          const msgs = (h.messages || []).filter(x => keepMsg(x) && x.user !== c0.userId).map(x => slackMsg(x, users, c0.userId)).reverse();
-          return msgs.length ? Object.assign({}, cv, { messages:msgs, more:!!h.has_more }) : null });
-        return json({ unread:res.filter(Boolean), teamId:c0.teamId, at:Date.now() });
+        const convs = await slackConvs(c0, users), pickd = [...convs.filter(x => x.kind === 'im' || x.kind === 'mpim').slice(0, 15), ...convs.filter(x => x.kind === 'channel' || x.kind === 'private').slice(0, 15)];
+        const errors = new Set(); let limited = false;
+        const valid = t => t && t !== '0000000000.000000' && +t > 0;
+        const one = async cv => { if(limited) return null;
+          try{
+            const info = (await slack(c0.token, 'conversations.info', { channel:cv.id })).channel || {}, n = info.unread_count_display;
+            if(typeof n === 'number' && n === 0) return null;                                     // Slack indique : rien de non lu
+            const last = valid(info.last_read) ? info.last_read : String(Date.now() / 1000 - 86400);   // à défaut : les dernières 24 heures
+            if(typeof n !== 'number' && info.latest && info.latest.ts && info.latest.ts <= last) return null;
+            const h = await slack(c0.token, 'conversations.history', { channel:cv.id, oldest:last, limit:'8' });
+            const msgs = (h.messages || []).filter(x => keepMsg(x) && x.user !== c0.userId).map(x => slackMsg(x, users, c0.userId)).reverse();
+            return msgs.length ? Object.assign({}, cv, { messages:msgs, more:!!h.has_more }) : null;
+          }catch(e){ if(e.status === 428) throw e; if(e.status === 429) limited = true; errors.add(e.message); return null } };
+        const res = []; for(let k = 0; k < pickd.length; k += 5) res.push(...await Promise.all(pickd.slice(k, k + 5).map(one)));   // par petits groupes, pour ne pas dépasser les limites de Slack
+        return json({ unread:res.filter(Boolean), teamId:c0.teamId, at:Date.now(), checked:pickd.length, total:convs.length, errors:[...errors].slice(0, 3) });
       }
     }
 
