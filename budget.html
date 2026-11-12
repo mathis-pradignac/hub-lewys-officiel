@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<script>/* Lewys Hub : cette page est pilotée depuis le Hub. Ouverte seule, elle repasse par le Hub (connexion, droits, bouton retour). */(function(){try{var hub=window.parent!==window&&window.parent.LewysHubBridge;if(hub&&hub.online())window.claude=hub.claudeFor('budget')}catch(e){}})();(function(){try{if(window.top===window){var f=location.pathname.split("/").pop();location.replace("index.html#/page/"+encodeURIComponent(f));}}catch(e){}})();</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lewys Budget Hôtel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lexend+Zetta:wght@500;600&display=swap">
+<style>
+/* Layout: dark brand band on top, then parameters → KPI strip → monthly grid (sticky label column) → chart. Inputs read as electrik blue, results as ink. */
+:root{
+  --electrik:#3721CA; --gold:#B28958; --gold-light:#D9B68E; --lavender:#ADB7F9; --ink:#1D1D1B; --graphite:#2E2E30;
+  --bg:#F6F6F8; --surface:#FFFFFF; --surface-2:#F0F0F4; --fg:#1D1D1B; --muted:#6B6A73; --line:#E3E2E9;
+  --input-bg:#F1F0FD; --input-fg:#3721CA; --input-line:#D6D2F7; --accent:#3721CA; --accent-fg:#FFFFFF;
+  --band:#1D1D1B; --band-fg:#FFFFFF; --band-muted:rgba(255,255,255,.62);
+  --good:#1E7F4F; --good-bg:#E3F3EA; --bad:#B4362F; --bad-bg:#FBE7E5; --neutral-bg:#EEEEF2;
+  --n1:#B9B7C4; --focus:#3721CA;
+  --font-body:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-label:"Lexend Zetta","Plus Jakarta Sans",system-ui,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141416; --surface:#1C1C1F; --surface-2:#242428; --fg:#F1F0F5; --muted:#A3A1AE; --line:#323238;
+  --input-bg:#221E45; --input-fg:#C4CBFF; --input-line:#3A3470; --accent:#7D6CF2; --accent-fg:#FFFFFF;
+  --band:#0E0E10; --good:#5CCB92; --good-bg:#16301F; --bad:#F08A82; --bad-bg:#3A1A18; --neutral-bg:#2A2A30;
+  --n1:#55535F; --focus:#ADB7F9; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141416; --surface:#1C1C1F; --surface-2:#242428; --fg:#F1F0F5; --muted:#A3A1AE; --line:#323238;
+  --input-bg:#221E45; --input-fg:#C4CBFF; --input-line:#3A3470; --accent:#7D6CF2; --accent-fg:#FFFFFF;
+  --band:#0E0E10; --good:#5CCB92; --good-bg:#16301F; --bad:#F08A82; --bad-bg:#3A1A18; --neutral-bg:#2A2A30;
+  --n1:#55535F; --focus:#ADB7F9; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--band)}
+.wrap{max-width:1480px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.eyebrow{font-family:var(--font-label);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.num{font-variant-numeric:tabular-nums}
+
+/* Band */
+.band{background:var(--band);color:var(--band-fg);position:sticky;top:env(safe-area-inset-top,0px);z-index:20}
+.band .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:12px}
+.logo{height:30px;width:auto;flex:none}
+.app-name{display:flex;flex-direction:column;gap:1px;padding-left:14px;border-left:1px solid rgba(255,255,255,.18)}
+.app-name b{font-weight:700;font-size:15px}
+.app-name span{font-family:var(--font-label);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-light)}
+.band .spacer{flex:1}
+.band select{background:#2E2E30;border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:8px;padding:7px 10px;max-width:280px}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:7px 12px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--electrik);border-color:var(--electrik);color:#fff}
+.btn.primary:hover{background:#2A18A8}
+.btn.ghost-dark{background:transparent;border-color:rgba(255,255,255,.2);color:#fff}
+.btn.ghost-dark:hover{border-color:var(--gold-light)}
+.btn.danger{color:var(--bad)}
+.btn svg{width:15px;height:15px}
+.menu{position:relative}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:6px;min-width:250px;z-index:30;display:grid;gap:2px}
+.menu-pop button{display:grid;grid-template-columns:44px 1fr;align-items:center;text-align:left;gap:8px;border:0;background:none;padding:8px 10px;border-radius:7px;cursor:pointer}
+.menu-pop button:hover{background:var(--surface-2)}
+.menu-pop .ext{font-family:var(--font-label);font-size:9px;letter-spacing:.06em;background:var(--input-bg);color:var(--input-fg);border-radius:5px;padding:4px 0;text-align:center}
+.menu-pop small{display:block;color:var(--muted);font-size:12px}
+.sync{font-size:12px;color:var(--band-muted);display:flex;align-items:center;gap:6px}
+.sync i{width:7px;height:7px;border-radius:50%;background:var(--gold-light);display:inline-block}
+.sync.ok i{background:#5CCB92}
+
+main{display:grid;gap:22px;padding-block:22px 48px}
+main>*{min-width:0}
+.title-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.title-row h1{margin:4px 0 0;font-size:clamp(22px,3vw,30px);font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.title-row h1 em{font-style:normal;color:var(--gold)}
+.status{display:inline-flex;align-items:center;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:var(--neutral-bg);color:var(--muted)}
+.chip.good{background:var(--good-bg);color:var(--good)} .chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.gold{background:color-mix(in srgb,var(--gold-light) 30%,transparent);color:var(--gold)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+.panel-h h2{margin:0;font-size:15px;font-weight:700}
+.panel-b{padding:16px 18px}
+
+/* Parameters */
+.params{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 18px}
+.field{display:grid;gap:5px;min-width:0}
+.field label{font-size:12px;color:var(--muted);font-weight:600}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px}
+.field input.inp,.field select.inp{background:var(--input-bg);border-color:var(--input-line);color:var(--input-fg);font-weight:600}
+.field.wide{grid-column:span 2}
+@media (max-width:520px){.field.wide{grid-column:auto}}
+.hint{font-size:11.5px;color:var(--muted)}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.kpi{background:var(--surface);padding:14px 16px;display:grid;gap:4px;min-width:0}
+.kpi .v{font-size:clamp(18px,2vw,24px);font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .n1{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.kpi.lead{background:var(--electrik);color:#fff}
+.kpi.lead .eyebrow,.kpi.lead .n1{color:rgba(255,255,255,.75)}
+.kpi.lead .chip{background:rgba(255,255,255,.16);color:#fff}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Quick adjust */
+.adjust{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end}
+.adjust .field{width:150px}
+.adjust .sep{width:1px;align-self:stretch;background:var(--line)}
+
+/* Grid */
+.grid-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:1280px;font-size:13px}
+.grid th,.grid td{padding:0;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.grid thead th{position:sticky;top:0;background:var(--surface-2);font-weight:700;padding:9px 8px;font-size:12px;z-index:2}
+.grid thead th .yr{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.grid .lbl{position:sticky;left:0;background:var(--surface);text-align:left;padding:7px 12px;font-weight:600;z-index:1;min-width:230px;border-right:1px solid var(--line)}
+.grid thead .lbl{z-index:3;background:var(--surface-2)}
+.grid .lbl small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.grid td.o{padding:7px 8px}
+.grid td.tot,.grid th.tot{background:var(--surface-2);font-weight:700;padding:7px 10px;border-left:1px solid var(--line)}
+.grid tr.sect td{background:var(--bg);padding:12px 12px 6px;text-align:left;border-bottom:1px solid var(--line)}
+.grid tr.sect td .eyebrow{color:var(--gold)}
+.grid tr.sect td.lbl{background:var(--bg)}
+.grid tr.strong td{font-weight:700}
+.grid tr.strong .lbl{color:var(--fg)}
+.grid tr.key td.o,.grid tr.key td.lbl{background:color-mix(in srgb,var(--electrik) 6%,var(--surface))}
+.grid tr.key td.tot{background:color-mix(in srgb,var(--electrik) 12%,var(--surface-2))}
+.grid input.cell{width:100%;min-width:72px;border:0;border-radius:0;background:var(--input-bg);color:var(--input-fg);font-weight:600;text-align:right;padding:7px 8px;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px transparent}
+.grid input.cell:hover{box-shadow:inset 0 0 0 1px var(--input-line)}
+.grid input.cell:focus{outline:none;box-shadow:inset 0 0 0 2px var(--focus);background:var(--surface)}
+.grid input.cell.auto{font-weight:500;font-style:italic;opacity:.8}
+.grid input.cell.n1{background:var(--surface-2);color:var(--fg)}
+.grid td.in{padding:0;border-left:1px solid var(--surface)}
+.grid textarea.cmt{width:100%;min-width:110px;height:46px;border:0;background:transparent;padding:6px 8px;font-size:12px;resize:vertical;text-align:left;white-space:normal}
+.grid textarea.cmt:focus{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+
+/* Chart */
+.chart-wrap{overflow-x:auto}
+.chart-wrap svg{display:block;width:100%;min-width:640px;height:auto}
+
+.notes textarea{width:100%;min-height:80px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface)}
+
+/* Overlay */
+.modal-bg{position:fixed;inset:0;background:rgba(14,14,16,.5);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--surface);border-radius:12px;max-width:440px;width:100%;padding:20px;display:grid;gap:14px;border:1px solid var(--line)}
+.modal h3{margin:0;font-size:17px}
+.modal p{margin:0;color:var(--muted)}
+.modal .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
+.empty{text-align:center;padding:60px 20px;display:grid;gap:12px;justify-items:center}
+.empty h2{margin:0}
+.foot{color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media (max-width:720px){.app-name{display:none}.band select{max-width:170px}.band{position:static}}
+@media (prefers-reduced-motion:no-preference){.btn,.grid input.cell{transition:background .15s,border-color .15s,box-shadow .15s}}
+</style>
+
+</head>
+<body>
+<header class="band">
+  <div class="wrap">
+    <svg class="logo" viewBox="0 0 311.4 99.2" role="img" aria-label="Lewys"><path d="M13.93 69.51L12.22 25.88C12.09 22.17 7.870 20.07 4.81 22.22L2.02 24.18C0.77 25.06 0 26.49 0 28.03L0 69.69C0 72.29 2.1 74.38 4.7 74.38L9.22 74.38C11.91 74.38 14.03 72.16 13.93 69.51Z" fill="#3721CA"/><path d="M48.16 6.58L40.37 1.15C38.75 0.01 36.6 0.01 34.97 1.15L25.67 7.64C24.37 8.57 23.6 10.08 23.68 11.67L25.62 62.93C25.78 67.36 31.52 69.16 34.1 65.56C36.3 62.48 38.11 59.36 39.84 56.2C43.29 49.87 46.03 43.64 48.1 37.46C50.15 31.31 51.19 25.64 51.19 20.45C51.19 15.25 51.85 8.46 48.18 6.56Z" fill="#B28958"/><path d="M73.35 24.18L69.29 21.32C66.65 19.49 63.01 20.71 62.08 23.78C61.15 26.86 59.96 30.09 59.05 33.17C56.64 41.44 54.54 45.920 50.36 54.43C48.21 58.83 45.87 63.12 43.37 67.33C41.51 70.46 43.77 74.41 47.41 74.41L70.64 74.41C73.24 74.41 75.34 72.32 75.34 69.72L75.34 28.03C75.34 26.49 74.6 25.06 73.35 24.18Z" fill="#ADB7F9"/><g fill="#FFFFFF"><path d="M122.17 63.73C122.17 68.05 126.77 67.41 126.77 70.67C126.77 72.85 125.34 73.46 122.52 73.83C120.53 74.2 118.37 74.28 116.11 74.28C113.85 74.28 111.52 74.2 109.26 73.83C106.55 73.56 105.11 72.85 105.11 70.670C105.11 67.44 109.71 68.05 109.71 63.73L109.71 17.5C109.71 13.82 105.11 13.37 105.11 9.76C105.11 7.7 106.84 6.42 110.08 6.42L114.68 6.42C119.28 6.42 122.17 8.68 122.17 13.45L122.17 63.73Z"/><path d="M153.4 66.43C158.37 66.43 162.44 63.73 166.24 59.49C166.95 58.67 167.86 58.22 168.58 58.22C169.74 58.22 170.46 59.3 169.56 61.74C166.02 71.02 158.98 74.62 149.76 74.73C138.39 74.73 129.43 68.42 127.17 56.17C124.65 42.58 133.31 29.06 148.86 28.5C156.62 28.5 163.95 30.38 167.65 37.89C170.36 43.29 168.28 47.72 162.41 50.5L143.81 59.25C143.17 59.62 142.9 60.23 143.35 60.79C145.61 64.76 148.96 66.46 153.37 66.46L153.4 66.43ZM151.96 47.4C155.66 45.78 157.57 43.88 155.85 40.64C154.41 37.67 151.41 35.05 147.63 35.05C146.92 35.05 146.09 35.13 145.3 35.42C138.89 37.04 137.43 44.43 139.23 51.83C139.42 52.36 139.77 52.65 140.22 52.65C140.3 52.65 140.48 52.65 140.67 52.57L151.96 47.43L151.96 47.4Z"/><path d="M228.98 41.09C227.42 45.86 222.66 60.2 222.66 60.2C222.58 60.57 222.39 60.84 222.21 60.84C222.13 60.84 221.94 60.57 221.83 60.2L214.16 36.24C212.88 31.74 209.82 29.3 206.39 29.3L201.34 29.3C197.65 29.3 196.3 30.28 196.3 32.08C196.3 34.41 200.18 35.05 201.53 39.1L201.98 40.64C202.25 41.46 202.25 42.37 201.98 43.16L195.58 61.18C195.5 61.56 195.31 61.71 195.13 61.71C194.94 61.71 194.86 61.53 194.67 61.08L186.46 36.22C185.19 31.79 182.21 29.27 178.7 29.27L173.73 29.27C170.04 29.27 168.68 30.25 168.68 32.05C168.68 34.39 172.56 35.02 173.92 39.08L183.67 66.91C185.03 71.34 187.74 73.93 191.17 73.93L193.24 73.93C196.77 73.930 198.4 71.31 200.02 66.91L205.07 52.94C205.25 52.49 205.33 52.3 205.52 52.3C205.6 52.3 205.78 52.49 205.89 52.94L210.94 66.91C212.29 71.42 215.08 73.93 218.43 73.93L220.51 73.93C224.39 73.93 225.88 71.47 227.36 66.91C229.28 61.03 233.66 49.44 235.66 43.58C236.24 41.86 236.53 40.54 237.17 39.18C237.57 38.34 237.94 37.81 238.74 37.91C239.54 38.02 239.51 38.95 239.59 40.03L240.97 73.22C241.16 76.93 240.57 80.32 239.24 83.32C237.91 86.29 236.96 88.06 234.91 89.73C232.94 91.35 232.28 91.83 231.19 92.01C229.76 92.28 227.47 91.75 226.27 90.53C224.57 88.78 223.24 86.47 220.4 86.55C219.26 86.55 218.22 87 217.26 87.88C216.33 88.78 215.86 90.08 215.86 91.72C215.86 93.81 216.65 95.62 218.22 97.07C219.79 98.53 222.39 99.22 225.8 99.22C228.37 99.22 233.24 98.88 237.09 96.54C240.17 94.66 243.28 92.09 246.34 88.88C250.51 84.48 253.67 80.77 255.93 77.51C258.7 73.54 261.19 69.3 263.35 64.9C265.5 60.52 267.23 56.12 268.48 51.85C269.75 47.53 269.99 44.64 269.46 39.87C268.61 31.9 265.1 29.06 262.1 29.06C259.28 29.06 257.66 30.86 257.66 33.96C257.66 35.42 258.01 36.77 258.7 38.02C259.26 39.03 259.81 40.24 260.32 41.68C260.82 43.03 261.06 44.96 261.06 47.37C261.06 49.79 260.56 52.65 259.55 55.64C258.54 58.69 257.1 62.3 255.48 65.5C253.86 68.71 251.1 73.14 250.48 71.36C249.37 68.13 249.5 39.1 249.5 39.1C249.37 35.58 248.65 33.09 247.35 31.52C245.99 29.91 244.11 29.17 241.82 29.06C241.18 29.06 239.54 29.06 238.55 29.11C232.76 29.54 231.96 32.03 228.98 41.04L228.98 41.09Z"/><path d="M292.4 28.5C298.46 28.5 306.59 29.85 309.38 36.16C311.19 40.3 308.74 43.45 305.58 43.45C304.41 43.45 303.13 43 301.96 42.02C297.53 38.23 295.72 34.55 291.57 34.55C287.06 34.55 284.53 36.8 284.53 40.59C284.53 50.58 310.66 47.08 311 61.24C311.37 72.05 300.61 74.76 291.12 74.76C281.63 74.76 273.95 72.24 271.24 66.27C269.43 62.3 271.61 59.96 274.59 59.96C276.03 59.96 277.67 60.5 279.03 61.77C283.09 65.290 285.09 68.71 290.51 68.71C295.11 68.71 298.11 66.64 298.11 63.04C298.03 55.01 272.28 57.9 272.28 42.68C272.28 32.05 282.85 28.53 292.42 28.53L292.4 28.5Z"/></g></svg>
+    <div class="app-name"><b>Budget hôtelier</b><span>Revenue management</span></div>
+    <div class="spacer"></div>
+    <select id="budgetSelect" aria-label="Budget affiché"></select>
+    <button class="btn ghost-dark" id="btnNew" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>Nouveau</button>
+    <div class="menu">
+      <button class="btn primary" id="btnExport" type="button" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"/></svg>Exporter</button>
+      <div class="menu-pop" id="exportMenu" hidden>
+        <button type="button" data-exp="xlsx"><span class="ext">XLSX</span><span>Excel avec formules<small>Classeur mis en forme, recalculable</small></span></button>
+        <button type="button" data-exp="pdf"><span class="ext">PDF</span><span>Rapport PDF<small>Synthèse, tableau mensuel et graphique</small></span></button>
+        <button type="button" data-exp="csv"><span class="ext">CSV</span><span>Données CSV<small>Séparateur point-virgule, format FR</small></span></button>
+        <button type="button" data-exp="json"><span class="ext">JSON</span><span>Sauvegarde du budget<small>Réimportable dans l'outil</small></span></button>
+      </div>
+    </div>
+    <span class="sync" id="sync"><i></i><span>Chargement…</span></span>
+  </div>
+</header>
+
+<main class="wrap" id="app"></main>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+
+<script>
+(() => {
+'use strict';
+/* ---------- Constants ---------- */
+const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MSHORT = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+const STATUSES = {draft:'Brouillon', review:'En revue', ok:'Validé'};
+const LS_KEY = 'lewys-budgets-v1';
+const SESSION = Math.random().toString(36).slice(2,10);
+const LOGO_SVG = document.querySelector('.logo').outerHTML.replace('class="logo"','xmlns="http://www.w3.org/2000/svg" width="311" height="99"');
+
+/* Example template built from the Hôtel Hemen workbook (Sept → Août). */
+const HEMEN_N1 = {
+  sold:[56,43,39,48,43,42,47,59,42,64,65,77],
+  heb:[31716.51,17796.71,13895.72,17797.80,15844.79,15623.45,15936.82,36729.13,27278.50,44004.58,47307.17,60954.65],
+  tot:[39987.09,24424.64,20482.24,26066.57,22392.77,24774.85,22405.00,47206.90,39260.32,59291.03,66243.87,79429.55]
+};
+function exampleBudget(variant){
+  const v8 = variant === 8;
+  const to = v8 ? [.7,.5,.35,.4,.3,.4,.4,.65,.6,.8,.85,.95] : [.75,.6,.5,.6,.6,.6,.6,.75,.65,.85,.9,.95];
+  const pm = v8 ? [380,300,280,300,280,300,280,350,380,450,550,600] : [550,400,350,350,350,350,350,600,600,650,700,800];
+  return normalize({
+    id: uid(), hotel:'Hôtel Hemen', scenario: v8 ? '8 chambres' : '3 chambres',
+    rooms: v8 ? 8 : 3, roomsN1: 3, startYear: 2026, startMonth: 8, extrasCoef: v8 ? .6 : 1,
+    status:'draft', author:'', notes: v8 ? 'Scénario extension à 8 chambres : extras/nuitée ramenés à 60 % du réalisé N-1.' : 'Scénario base 3 chambres.',
+    months: to.map((t,i)=>({to:t, pm:pm[i], extras:null, closed:0, comment:'', n1:{sold:HEMEN_N1.sold[i], heb:HEMEN_N1.heb[i], tot:HEMEN_N1.tot[i]}}))
+  });
+}
+function blankBudget(){
+  const now = new Date();
+  return normalize({id:uid(), hotel:'Nouvel établissement', scenario:'Base', rooms:20, roomsN1:20, startYear:now.getFullYear()+1, startMonth:0, extrasCoef:1, status:'draft', author:'', notes:'',
+    months: Array.from({length:12},()=>({to:.65, pm:120, extras:null, closed:0, comment:'', n1:{sold:0, heb:0, tot:0}}))});
+}
+function uid(){ return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function normalize(b){
+  const n = (x,d=0)=> (typeof x==='number' && isFinite(x)) ? x : d;
+  const out = {
+    id: String(b.id||uid()).replace(/[^A-Za-z0-9_\-.~:@+]/g,'').slice(0,60) || uid(),
+    hotel: String(b.hotel||'Établissement').slice(0,120), scenario: String(b.scenario||'').slice(0,80),
+    rooms: Math.max(0,n(b.rooms,1)), roomsN1: Math.max(0,n(b.roomsN1,n(b.rooms,1))),
+    startYear: Math.round(n(b.startYear,new Date().getFullYear())), startMonth: Math.min(11,Math.max(0,Math.round(n(b.startMonth,0)))),
+    extrasCoef: n(b.extrasCoef,1), status: STATUSES[b.status]?b.status:'draft', author:String(b.author||'').slice(0,80), notes:String(b.notes||'').slice(0,4000),
+    updatedAt: n(b.updatedAt, Date.now()), lastEditor: b.lastEditor||'',
+    months: []
+  };
+  for (let i=0;i<12;i++){
+    const m = (b.months||[])[i]||{}; const n1 = m.n1||{};
+    out.months.push({to:n(m.to,0), pm:n(m.pm,0), extras:(typeof m.extras==='number'&&isFinite(m.extras))?m.extras:null, closed:Math.max(0,n(m.closed,0)), comment:String(m.comment||'').slice(0,500),
+      n1:{sold:n(n1.sold,0), heb:n(n1.heb,0), tot:n(n1.tot,0)}});
+  }
+  return out;
+}
+
+/* ---------- Calculation engine ---------- */
+const daysIn = (y,m)=> new Date(y,m+1,0).getDate();
+const div = (a,b)=> b ? a/b : 0;
+function periodOf(b){ return Array.from({length:12},(_,i)=>{ const k=b.startMonth+i; return {y:b.startYear+Math.floor(k/12), m:k%12}; }); }
+function compute(b){
+  const per = periodOf(b);
+  const rows = per.map((p,i)=>{
+    const M = b.months[i];
+    const days = daysIn(p.y,p.m), daysN1 = daysIn(p.y-1,p.m);
+    const avail = Math.max(0,days-M.closed)*b.rooms;
+    const availN1 = daysN1*b.roomsN1;
+    const toN1 = div(M.n1.sold,availN1), pmN1 = div(M.n1.heb,M.n1.sold), extN1 = div(M.n1.tot-M.n1.heb,M.n1.sold);
+    const extrasAuto = extN1*b.extrasCoef;
+    const extras = M.extras==null ? extrasAuto : M.extras;
+    const nights = avail*M.to, heb = nights*M.pm, ext = nights*extras, tot = heb+ext;
+    return {p, days, daysN1, closed:M.closed, avail, to:M.to, pm:M.pm, extras, extrasAuto, nights, heb, ext, tot,
+      revpar:div(heb,avail), trevpar:div(tot,avail),
+      availN1, soldN1:M.n1.sold, hebN1:M.n1.heb, totN1:M.n1.tot, toN1, pmN1, extN1, revparN1:div(M.n1.heb,availN1), trevparN1:div(M.n1.tot,availN1)};
+  });
+  const s = k => rows.reduce((a,r)=>a+r[k],0);
+  const T = {days:s('days'), avail:s('avail'), nights:s('nights'), heb:s('heb'), ext:s('ext'), tot:s('tot'), closed:s('closed'),
+    availN1:s('availN1'), soldN1:s('soldN1'), hebN1:s('hebN1'), totN1:s('totN1')};
+  Object.assign(T,{to:div(T.nights,T.avail), pm:div(T.heb,T.nights), extras:div(T.ext,T.nights), revpar:div(T.heb,T.avail), trevpar:div(T.tot,T.avail),
+    toN1:div(T.soldN1,T.availN1), pmN1:div(T.hebN1,T.soldN1), extN1:div(T.totN1-T.hebN1,T.soldN1), revparN1:div(T.hebN1,T.availN1), trevparN1:div(T.totN1,T.availN1)});
+  rows.forEach(r=>r.share = div(r.tot,T.tot));
+  return {rows,T};
+}
+const pct = (a,b)=> b ? a/b-1 : null;
+
+/* ---------- Formatting ---------- */
+const nf0 = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
+const nf1 = new Intl.NumberFormat('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const nf2 = new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const clean = s => s.replace(/[  ]/g,' ');
+const F = {
+  eur: v => clean(nf0.format(Math.round(v||0))) + ' €',
+  eur2: v => clean(nf2.format(v||0)) + ' €',
+  int: v => clean(nf0.format(Math.round(v||0))),
+  dec: v => clean(nf1.format(v||0)),
+  pct: v => clean(nf1.format((v||0)*100)) + ' %',
+  var: v => v==null||!isFinite(v) ? '—' : (v>0?'+':'') + clean(nf1.format(v*100)) + ' %',
+  pts: v => (v>0?'+':'') + clean(nf1.format(v*100)) + ' pts',
+  eurVar: v => (v>0?'+':'') + clean(nf0.format(Math.round(v||0))) + ' €',
+  k: v => Math.abs(v)>=1e6 ? clean(nf1.format(v/1e6))+' M€' : Math.abs(v)>=1e3 ? clean(nf0.format(v/1e3))+' k€' : clean(nf0.format(v))+' €'
+};
+function parseNum(s){
+  if (s==null) return NaN; s = String(s).trim().replace(/[\s  €]/g,'');
+  s = s.replace(/%|pts?$/g,'');
+  if (/,\d+$/.test(s) && s.includes('.')) s = s.replace(/\./g,'');
+  s = s.replace(',', '.');
+  return parseFloat(s);
+}
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const periodLabel = b => { const p=periodOf(b); return `${MSHORT[p[0].m]} ${p[0].y} – ${MSHORT[p[11].m]} ${p[11].y}`; };
+const exerciseLabel = b => b.startMonth===0 ? String(b.startYear) : `${b.startYear}-${b.startYear+1}`;
+
+/* ---------- Store (shared db on claude.ai, browser storage elsewhere) ---------- */
+const state = {budgets:new Map(), currentId:null, mode:'local', db:null, loaded:false};
+const writeQ = new Map(); // id -> {timer, inflight, dirty}
+function setSync(text, ok){ const el=document.getElementById('sync'); el.className='sync'+(ok?' ok':''); el.lastElementChild.textContent=text; }
+function lsRead(){ try{ const raw=localStorage.getItem(LS_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; } }
+function lsWrite(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({current:state.currentId, budgets:[...state.budgets.values()]})); return true; }catch(e){ return false; } }
+function rememberCurrent(){ try{ localStorage.setItem(LS_KEY+'-current', state.currentId||''); }catch(e){} }
+function recallCurrent(){ try{ return localStorage.getItem(LS_KEY+'-current'); }catch(e){ return null; } }
+
+function persist(b, immediate){
+  b.updatedAt = Date.now(); b.lastEditor = SESSION;
+  if (state.mode==='local'){ setSync(lsWrite() ? 'Enregistré sur ce navigateur' : 'Non enregistré (stockage bloqué) : exportez en JSON', true); return; }
+  let q = writeQ.get(b.id); if(!q){ q={timer:null,inflight:false,dirty:false}; writeQ.set(b.id,q); }
+  q.dirty = true; clearTimeout(q.timer);
+  setSync('Modifications en attente…');
+  q.timer = setTimeout(()=>flush(b.id), immediate?0:700);
+}
+async function flush(id){
+  const q = writeQ.get(id); if(!q||q.inflight||!q.dirty) return;
+  const b = state.budgets.get(id); if(!b){ q.dirty=false; return; }
+  q.inflight = true; q.dirty = false;
+  try{ await state.db.collection('budgets').doc(id).set(JSON.parse(JSON.stringify(b))); setSync('Enregistré · partagé', true); }
+  catch(e){
+    if (e&&e.code==='unavailable'){ q.dirty=true; setTimeout(()=>flush(id), 800+Math.random()*800); }
+    else if (e&&e.code==='quota_exceeded') toast('Espace de stockage plein : supprimez d’anciens budgets.');
+    else setSync('Échec de l’enregistrement : exportez en JSON par sécurité');
+  }
+  finally{ q.inflight=false; if(q.dirty) flush(id); }
+}
+async function removeBudget(id){
+  state.budgets.delete(id);
+  if (state.mode==='db'){ try{ await state.db.collection('budgets').doc(id).delete(); }catch(e){ toast('Suppression impossible pour le moment.'); } }
+  else lsWrite();
+}
+function addBudget(b){ state.budgets.set(b.id,b); state.currentId=b.id; rememberCurrent(); persist(b,true); renderAll(); }
+
+async function initStore(){
+  let db = null;
+  try{ if (window.claude && typeof window.claude.use==='function') db = await window.claude.use('db'); }catch(e){ db=null; }
+  if (db){
+    state.mode='db'; state.db=db;
+    const timer = setTimeout(()=>{ if(!state.loaded){ setSync('Données injoignables pour le moment'); } },10000);
+    db.collection('budgets').onSnapshot(snap=>{
+      if(!snap.metadata.fromCache) clearTimeout(timer);
+      let changedCurrent = false;
+      snap.docChanges().forEach(ch=>{
+        const id = ch.doc.id;
+        if (ch.type==='removed'){ state.budgets.delete(id); if(id===state.currentId) changedCurrent=true; return; }
+        const remote = normalize({...ch.doc.data(), id});
+        const local = state.budgets.get(id);
+        if (local && remote.lastEditor===SESSION) return;   // echo of our own write
+        if (local && remote.updatedAt <= local.updatedAt) return;
+        state.budgets.set(id, remote); if(id===state.currentId) changedCurrent=true;
+      });
+      const first = !state.loaded; state.loaded = true;
+      if (!snap.metadata.fromCache) setSync('Synchronisé · partagé', true);
+      if (first || changedCurrent || !state.budgets.has(state.currentId)) { pickCurrent(); renderAll(); }
+      else renderSelect();
+    }, err=>{ clearTimeout(timer); setSync('Synchronisation interrompue'); });
+  } else {
+    state.mode='local';
+    const saved = lsRead();
+    if (saved && Array.isArray(saved.budgets) && saved.budgets.length){ saved.budgets.forEach(b=>{ const nb=normalize(b); state.budgets.set(nb.id,nb); }); state.currentId = saved.current; }
+    else { const a=exampleBudget(3), c=exampleBudget(8); state.budgets.set(a.id,a); state.budgets.set(c.id,c); state.currentId=a.id; lsWrite(); }
+    state.loaded = true; setSync('Enregistré sur ce navigateur', true);
+    pickCurrent(); renderAll();
+  }
+}
+function pickCurrent(){
+  if (state.currentId && state.budgets.has(state.currentId)) return;
+  const want = recallCurrent();
+  if (want && state.budgets.has(want)) { state.currentId=want; return; }
+  const list = sortedBudgets(); state.currentId = list.length ? list[0].id : null;
+}
+const sortedBudgets = () => [...state.budgets.values()].sort((a,b)=> (a.hotel+a.scenario).localeCompare(b.hotel+b.scenario,'fr'));
+const cur = () => state.budgets.get(state.currentId);
+
+/* ---------- Rendering ---------- */
+const app = document.getElementById('app');
+function renderSelect(){
+  const sel = document.getElementById('budgetSelect');
+  const list = sortedBudgets();
+  sel.innerHTML = list.map(b=>`<option value="${esc(b.id)}"${b.id===state.currentId?' selected':''}>${esc(b.hotel)}${b.scenario?' · '+esc(b.scenario):''} (${esc(exerciseLabel(b))})</option>`).join('') || '<option>Aucun budget</option>';
+  sel.disabled = !list.length;
+}
+function renderAll(){
+  renderSelect();
+  const b = cur();
+  if (!b){
+    app.innerHTML = `<div class="panel empty"><div class="eyebrow">${state.loaded?'Aucun budget':'Chargement'}</div><h2>${state.loaded?'Créez votre premier budget':'Récupération des budgets…'}</h2>
+      ${state.loaded?`<p class="hint">Partez d'une grille vierge, de l'exemple Hôtel Hemen ou importez une sauvegarde JSON.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn primary" data-act="new-blank" type="button">Budget vierge</button><button class="btn" data-act="new-example" type="button">Exemple Hôtel Hemen</button><button class="btn" data-act="import" type="button">Importer un JSON</button></div>`:''}</div>`;
+    return;
+  }
+  const per = periodOf(b);
+  const yrs = []; for(let y=new Date().getFullYear()-2;y<=new Date().getFullYear()+4;y++) yrs.push(y);
+  app.innerHTML = `
+  <section class="title-row">
+    <div>
+      <div class="eyebrow">Budget prévisionnel ${esc(exerciseLabel(b))} · ${esc(periodLabel(b))}</div>
+      <h1>${esc(b.hotel)}${b.scenario?` <em>· ${esc(b.scenario)}</em>`:''}</h1>
+    </div>
+    <div class="status">
+      <span class="chip ${b.status==='ok'?'good':b.status==='review'?'gold':''}" id="statusChip">${STATUSES[b.status]}</span>
+      <button class="btn" data-act="duplicate" type="button">Dupliquer</button>
+      <button class="btn" data-act="import" type="button">Importer</button>
+      <button class="btn danger" data-act="delete" type="button">Supprimer</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Paramètres de l'établissement</h2><span class="hint">Les champs en bleu sont des hypothèses modifiables.</span></div>
+    <div class="panel-b params">
+      <div class="field wide"><label for="p-hotel">Établissement</label><input id="p-hotel" data-p="hotel" value="${esc(b.hotel)}"></div>
+      <div class="field"><label for="p-scenario">Scénario</label><input id="p-scenario" data-p="scenario" value="${esc(b.scenario)}" placeholder="Base, optimiste…"></div>
+      <div class="field"><label for="p-rooms">Chambres (budget)</label><input class="inp num" id="p-rooms" data-p="rooms" inputmode="decimal" value="${b.rooms}"></div>
+      <div class="field"><label for="p-roomsN1">Chambres (N-1)</label><input class="inp num" id="p-roomsN1" data-p="roomsN1" inputmode="decimal" value="${b.roomsN1}"></div>
+      <div class="field"><label for="p-start">Début d'exercice</label><select class="inp" id="p-start" data-p="startMonth">${MONTHS.map((m,i)=>`<option value="${i}"${i===b.startMonth?' selected':''}>${m}</option>`).join('')}</select></div>
+      <div class="field"><label for="p-year">Année de début</label><select class="inp" id="p-year" data-p="startYear">${(yrs.includes(b.startYear)?yrs:[b.startYear,...yrs]).map(y=>`<option${y===b.startYear?' selected':''}>${y}</option>`).join('')}</select></div>
+      <div class="field"><label for="p-coef">Extras vs N-1</label><input class="inp num" id="p-coef" data-p="extrasCoef" inputmode="decimal" value="${F.dec(b.extrasCoef*100).replace(',0','')} %"><span class="hint">Extras/nuitée = réalisé N-1 × ce taux</span></div>
+      <div class="field"><label for="p-status">Statut</label><select id="p-status" data-p="status">${Object.entries(STATUSES).map(([k,v])=>`<option value="${k}"${k===b.status?' selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label for="p-author">Revenue manager</label><input id="p-author" data-p="author" value="${esc(b.author)}" placeholder="Nom"></div>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Indicateurs clés"></section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Ajustements rapides</h2><span class="hint">S'applique aux 12 mois. Astuce : collez une ligne copiée depuis Excel dans n'importe quelle cellule.</span></div>
+    <div class="panel-b adjust">
+      <div class="field"><label for="a-pm">Prix moyen</label><input class="inp num" id="a-pm" value="+5 %" inputmode="decimal"></div>
+      <button class="btn" data-act="adj-pm" type="button">Appliquer au PM</button>
+      <div class="sep"></div>
+      <div class="field"><label for="a-to">Taux d'occupation</label><input class="inp num" id="a-to" value="+2 pts" inputmode="decimal"></div>
+      <button class="btn" data-act="adj-to" type="button">Appliquer au TO</button>
+      <div class="sep"></div>
+      <div class="field"><label for="a-n1">Repartir du N-1</label><input class="inp num" id="a-n1" value="+3 %" inputmode="decimal"></div>
+      <button class="btn" data-act="from-n1" type="button">TO et PM = N-1 ajusté</button>
+      <button class="btn" data-act="reset-extras" type="button">Extras en automatique</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>Budget mensuel</h2>
+      <div class="legend"><span><span class="sw" style="background:var(--input-bg);box-shadow:inset 0 0 0 1px var(--input-line)"></span>Hypothèse budget</span><span><span class="sw" style="background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line)"></span>Réalisé N-1</span><span><i>Italique</i> = calcul automatique</span></div>
+    </div>
+    <div class="grid-scroll"><table class="grid" id="grid">
+      <thead><tr><th class="lbl">Indicateur</th>${per.map(p=>`<th>${MONTHS[p.m]}<span class="yr">${p.y}</span></th>`).join('')}<th class="tot">Total</th></tr></thead>
+      <tbody>${gridRows(b)}</tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>CA total et taux d'occupation, budget vs N-1</h2>
+      <div class="legend"><span><span class="sw" style="background:var(--electrik)"></span>CA budget</span><span><span class="sw" style="background:var(--n1)"></span>CA N-1</span><span><span class="sw" style="background:var(--gold)"></span>TO budget</span><span><span class="sw" style="background:var(--lavender)"></span>TO N-1</span></div>
+    </div>
+    <div class="panel-b chart-wrap" id="chart"></div>
+  </section>
+
+  <section class="panel notes">
+    <div class="panel-h"><h2>Hypothèses et commentaires</h2></div>
+    <div class="panel-b"><textarea id="p-notes" data-p="notes" placeholder="Contexte marché, événements, travaux, stratégie tarifaire…">${esc(b.notes)}</textarea></div>
+  </section>
+
+  <footer class="foot"><span>${state.mode==='db'?'Budgets enregistrés et partagés avec les personnes qui ont accès à cette page.':'Budgets enregistrés dans ce navigateur. Exportez en JSON pour les sauvegarder ou les transmettre.'}</span><span>Lewys · experts en rentabilité hôtelière</span></footer>`;
+  refresh();
+}
+
+const ROWS = [
+  {sect:'Capacité'},
+  {k:'days', l:'Nombre de jours', f:'int', t:'sum'},
+  {k:'closed', l:'Jours de fermeture', sub:'travaux, congés annuels', input:'closed', f:'int'},
+  {k:'avail', l:'Chambres disponibles', sub:'(jours − fermeture) × chambres', f:'int'},
+  {sect:'Hypothèses budget'},
+  {k:'to', l:"Taux d'occupation (TO)", input:'to', f:'pct', key:1},
+  {k:'pm', l:'Prix moyen HEB (PM)', input:'pm', f:'eur', key:1},
+  {k:'extras', l:'Extras par nuitée', sub:'auto = N-1 × taux extras', input:'extras', f:'eur2'},
+  {sect:'Résultats budget'},
+  {k:'nights', l:'Nuitées (chambres vendues)', f:'int'},
+  {k:'heb', l:'CA hébergement', f:'eur', strong:1},
+  {k:'ext', l:'CA extras', f:'eur'},
+  {k:'tot', l:'CA total', f:'eur', strong:1, key:1},
+  {k:'revpar', l:'RevPAR', sub:'CA HEB / chambre disponible', f:'eur2'},
+  {k:'trevpar', l:'TRevPAR', sub:'CA total / chambre disponible', f:'eur2'},
+  {k:'share', l:'Saisonnalité (% CA annuel)', f:'pct', tot:'100'},
+  {sect:'Réalisé N-1'},
+  {k:'availN1', l:'Chambres disponibles N-1', f:'int'},
+  {k:'soldN1', l:'Chambres louées N-1', input:'n1.sold', f:'int'},
+  {k:'hebN1', l:'CA hébergement N-1', input:'n1.heb', f:'eur'},
+  {k:'totN1', l:'CA total N-1', input:'n1.tot', f:'eur'},
+  {k:'toN1', l:'TO N-1', f:'pct'},
+  {k:'pmN1', l:'PM N-1', f:'eur'},
+  {k:'extN1', l:'Extras par nuitée N-1', f:'eur2'},
+  {k:'revparN1', l:'RevPAR N-1', f:'eur2'},
+  {sect:'Écarts vs N-1'},
+  {k:'dHeb', l:'Écart CA HEB', f:'eurVar', sign:1},
+  {k:'dHebP', l:'Écart CA HEB %', f:'var', sign:1},
+  {k:'dTot', l:'Écart CA total', f:'eurVar', sign:1, strong:1},
+  {k:'dTotP', l:'Écart CA total %', f:'var', sign:1, strong:1},
+  {k:'dTo', l:'Écart TO', f:'pts', sign:1},
+  {k:'dPm', l:'Écart PM %', f:'var', sign:1},
+  {k:'dRev', l:'Écart RevPAR %', f:'var', sign:1},
+  {sect:'Commentaires'},
+  {k:'comment', l:'Commentaire du mois', comment:1}
+];
+function derive(r){
+  return {dHeb:r.heb-r.hebN1, dHebP:pct(r.heb,r.hebN1), dTot:r.tot-r.totN1, dTotP:pct(r.tot,r.totN1), dTo:r.to-r.toN1, dPm:pct(r.pm,r.pmN1), dRev:pct(r.revpar,r.revparN1)};
+}
+function inputVal(b,i,key){
+  const M=b.months[i];
+  switch(key){
+    case 'to': return F.dec(M.to*100).replace(/,0$/,'') + ' %';
+    case 'pm': return F.int(M.pm);
+    case 'extras': return M.extras==null ? '' : F.dec(M.extras).replace(/,0$/,'');
+    case 'closed': return M.closed ? String(M.closed) : '0';
+    case 'n1.sold': return F.int(M.n1.sold);
+    case 'n1.heb': return F.int(M.n1.heb);
+    case 'n1.tot': return F.int(M.n1.tot);
+  }
+}
+function gridRows(b){
+  let html=''; let rowIdx=0;
+  ROWS.forEach(R=>{
+    if (R.sect){ html += `<tr class="sect"><td class="lbl"><span class="eyebrow">${R.sect}</span></td><td colspan="13"></td></tr>`; return; }
+    const cls = [R.strong?'strong':'', R.key?'key':''].join(' ');
+    html += `<tr class="${cls}"><td class="lbl">${R.l}${R.sub?`<small>${R.sub}</small>`:''}</td>`;
+    for (let i=0;i<12;i++){
+      if (R.comment) html += `<td class="in"><textarea class="cmt" data-i="${i}" data-c="1" aria-label="Commentaire ${MONTHS[periodOf(b)[i].m]}">${esc(b.months[i].comment)}</textarea></td>`;
+      else if (R.input) html += `<td class="in"><input class="cell${R.input.startsWith('n1')?' n1':''}" data-i="${i}" data-k="${R.input}" data-r="${rowIdx}" inputmode="decimal" aria-label="${esc(R.l)} ${MONTHS[periodOf(b)[i].m]}" value="${inputVal(b,i,R.input)}"></td>`;
+      else html += `<td class="o num" id="o-${R.k}-${i}"></td>`;
+    }
+    html += R.comment ? `<td class="tot"></td></tr>` : `<td class="tot num" id="o-${R.k}-T"></td></tr>`;
+    if (R.input) rowIdx++;
+  });
+  return html;
+}
+function setCell(id, text, signVal){
+  const el = document.getElementById(id); if(!el) return;
+  el.textContent = text;
+  if (signVal!==undefined){ el.classList.toggle('pos', signVal>0.00001); el.classList.toggle('neg', signVal<-0.00001); }
+}
+function refresh(){
+  const b = cur(); if(!b) return;
+  const {rows,T} = compute(b);
+  const Td = derive(T);
+  rows.forEach((r,i)=>{
+    const d = derive(r);
+    ROWS.forEach(R=>{
+      if (R.sect||R.comment) return;
+      if (R.input){
+        if (R.input==='extras'){ const el=document.querySelector(`input[data-k="extras"][data-i="${i}"]`); if(el){ el.placeholder = F.dec(r.extrasAuto); el.classList.toggle('auto', b.months[i].extras==null); } }
+        return;
+      }
+      const v = R.k in d ? d[R.k] : r[R.k];
+      setCell(`o-${R.k}-${i}`, F[R.f](v), R.sign? v : undefined);
+    });
+  });
+  ROWS.forEach(R=>{
+    if (R.sect||R.comment) return;
+    const v = R.k in Td ? Td[R.k] : (R.k==='share'?1:T[R.k]);
+    setCell(`o-${R.k}-T`, F[R.f](v), R.sign? v : undefined);
+  });
+  renderKpis(T,Td); renderChart(rows);
+  const chip = document.getElementById('statusChip'); if(chip){ chip.textContent=STATUSES[b.status]; chip.className='chip '+(b.status==='ok'?'good':b.status==='review'?'gold':''); }
+}
+function varChip(v, pts){
+  if (v==null||!isFinite(v)) return '<span class="chip">n.d.</span>';
+  const c = v>0.0005?'good':v<-0.0005?'bad':'';
+  return `<span class="chip ${c}">${pts?F.pts(v):F.var(v)}</span>`;
+}
+function renderKpis(T,Td){
+  const el = document.getElementById('kpis'); if(!el) return;
+  const k = (lead,label,val,n1txt,chip)=>`<div class="kpi${lead?' lead':''}"><span class="eyebrow">${label}</span><span class="v num">${val}</span><span class="n1 num">${n1txt}${chip}</span></div>`;
+  el.innerHTML =
+    k(1,'CA total',F.eur(T.tot),'N-1 '+F.k(T.totN1),varChip(Td.dTotP)) +
+    k(0,'CA hébergement',F.eur(T.heb),'N-1 '+F.k(T.hebN1),varChip(Td.dHebP)) +
+    k(0,"Taux d'occupation",F.pct(T.to),'N-1 '+F.pct(T.toN1),varChip(Td.dTo,true)) +
+    k(0,'Prix moyen',F.eur(T.pm),'N-1 '+F.eur(T.pmN1),varChip(Td.dPm)) +
+    k(0,'RevPAR',F.eur2(T.revpar),'N-1 '+F.eur2(T.revparN1),varChip(Td.dRev)) +
+    k(0,'Nuitées',F.int(T.nights),'N-1 '+F.int(T.soldN1),varChip(pct(T.nights,T.soldN1)));
+}
+
+/* ---------- Chart (SVG, colors passed in so PDF export can reuse it) ---------- */
+function chartColors(){
+  const cs = getComputedStyle(document.documentElement);
+  const g = n => cs.getPropertyValue(n).trim();
+  return {bar:g('--accent'), n1:g('--n1'), to:g('--gold'), toN1:g('--lavender'), text:g('--muted'), grid:g('--line'), fg:g('--fg')};
+}
+function chartSVG(rows, C){
+  const W=960,H=340,ml=64,mr=56,mt=18,mb=44, iw=W-ml-mr, ih=H-mt-mb;
+  const maxV = Math.max(1,...rows.map(r=>Math.max(r.tot,r.totN1)));
+  const step = niceStep(maxV/4); const top = Math.ceil(maxV/step)*step;
+  const y = v => mt + ih - (v/top)*ih;
+  const yt = v => mt + ih - Math.min(1,v)*ih;
+  const bw = iw/12, gw = bw*0.62, b1 = gw/2;
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="Plus Jakarta Sans, Helvetica, Arial, sans-serif" role="img" aria-label="CA mensuel budget et N-1, taux d'occupation">`;
+  for (let v=0; v<=top+1e-6; v+=step){ s += `<line x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}" stroke="${C.grid}" stroke-width="1"/><text x="${ml-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="${C.text}">${esc(F.k(v))}</text>`; }
+  [0,.25,.5,.75,1].forEach(t=>{ s += `<text x="${W-mr+8}" y="${yt(t)+4}" font-size="11" fill="${C.text}">${t*100} %</text>`; });
+  rows.forEach((r,i)=>{
+    const x0 = ml + i*bw + (bw-gw)/2;
+    s += `<rect x="${x0}" y="${y(r.totN1)}" width="${b1-2}" height="${Math.max(0,mt+ih-y(r.totN1))}" rx="2" fill="${C.n1}"><title>${MONTHS[r.p.m]} N-1 : ${F.eur(r.totN1)}</title></rect>`;
+    s += `<rect x="${x0+b1}" y="${y(r.tot)}" width="${b1-2}" height="${Math.max(0,mt+ih-y(r.tot))}" rx="2" fill="${C.bar}"><title>${MONTHS[r.p.m]} budget : ${F.eur(r.tot)}</title></rect>`;
+    s += `<text x="${ml+i*bw+bw/2}" y="${H-mb+18}" text-anchor="middle" font-size="11.5" fill="${C.text}">${MSHORT[r.p.m]}</text>`;
+    if (i===0||r.p.m===0) s += `<text x="${ml+i*bw+bw/2}" y="${H-mb+33}" text-anchor="middle" font-size="10" fill="${C.text}">${r.p.y}</text>`;
+  });
+  const line = (k,col,dash) => { const pts=rows.map((r,i)=>`${ml+i*bw+bw/2},${yt(r[k])}`); return `<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" ${dash?'stroke-dasharray="5 4"':''} stroke-linejoin="round"/>` + rows.map((r,i)=>`<circle cx="${ml+i*bw+bw/2}" cy="${yt(r[k])}" r="3.5" fill="${col}"><title>${MONTHS[r.p.m]} ${k==='to'?'TO budget':'TO N-1'} : ${F.pct(r[k])}</title></circle>`).join(''); };
+  s += line('toN1',C.toN1,true) + line('to',C.to,false);
+  s += `<line x1="${ml}" x2="${W-mr}" y1="${mt+ih}" y2="${mt+ih}" stroke="${C.text}" stroke-width="1"/>`;
+  return s + '</svg>';
+}
+function niceStep(x){ const p=Math.pow(10,Math.floor(Math.log10(x||1))); const n=x/p; return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p; }
+function renderChart(rows){ const el=document.getElementById('chart'); if(el) el.innerHTML = chartSVG(rows, chartColors()); }
+
+/* ---------- Editing ---------- */
+function setMonthValue(b,i,key,raw){
+  const M = b.months[i]; let v = parseNum(raw);
+  if (key==='extras'){ M.extras = (String(raw).trim()==='' || !isFinite(v)) ? null : Math.max(0,v); return; }
+  if (!isFinite(v)) v = 0;
+  if (key==='to'){ const frac = String(raw).includes('%') ? v/100 : (v<=1 ? v : v/100); M.to = Math.min(1,Math.max(0,frac)); }
+  else if (key==='pm') M.pm = Math.max(0,v);
+  else if (key==='closed'){ M.closed = Math.max(0,Math.round(v)); }
+  else if (key==='n1.sold') M.n1.sold = Math.max(0,v);
+  else if (key==='n1.heb') M.n1.heb = Math.max(0,v);
+  else if (key==='n1.tot') M.n1.tot = Math.max(0,v);
+}
+app.addEventListener('input', e=>{
+  const t=e.target, b=cur(); if(!b) return;
+  if (t.matches('input.cell')){ setMonthValue(b,+t.dataset.i,t.dataset.k,t.value); refresh(); persist(b); }
+  else if (t.matches('textarea.cmt')){ b.months[+t.dataset.i].comment = t.value.slice(0,500); persist(b); }
+  else if (t.dataset.p){ applyParam(b,t,false); }
+});
+app.addEventListener('change', e=>{
+  const t=e.target, b=cur(); if(!b) return;
+  if (t.matches('input.cell')) t.value = inputVal(b,+t.dataset.i,t.dataset.k);
+  else if (t.dataset.p) applyParam(b,t,true);
+});
+function applyParam(b,t,commit){
+  const p = t.dataset.p;
+  if (['hotel','scenario','author','notes'].includes(p)){ b[p]=t.value; persist(b); if(commit&&(p==='hotel'||p==='scenario')){ renderSelect(); const h=app.querySelector('h1'); if(h) h.innerHTML = esc(b.hotel)+(b.scenario?` <em>· ${esc(b.scenario)}</em>`:''); } return; }
+  if (p==='status'){ b.status=t.value; persist(b); refresh(); return; }
+  if (p==='startMonth'||p==='startYear'){ if(!commit) return; const nv=parseInt(t.value,10);
+    if (p==='startMonth' && nv!==b.startMonth){ const shift=(nv-b.startMonth+12)%12; const old=b.months.slice(); b.months=old.map((_,i)=>old[(i+shift)%12]); }
+    b[p]=nv; persist(b); renderAll(); return; }
+  const v = parseNum(t.value); if(!isFinite(v)) return;
+  if (p==='extrasCoef') b.extrasCoef = Math.max(0,v/100);
+  else b[p] = Math.max(0,v);
+  persist(b); refresh();
+  if (commit && p==='extrasCoef') t.value = F.dec(b.extrasCoef*100).replace(',0','')+' %';
+}
+/* Enter / arrows move like a spreadsheet; paste spreads Excel rows across months. */
+app.addEventListener('keydown', e=>{
+  const t=e.target; if(!t.matches('input.cell')) return;
+  const i=+t.dataset.i, r=+t.dataset.r; let target=null;
+  if (e.key==='Enter'||e.key==='ArrowDown') target = app.querySelector(`input.cell[data-r="${r+(e.shiftKey&&e.key==='Enter'?-1:1)}"][data-i="${i}"]`);
+  else if (e.key==='ArrowUp') target = app.querySelector(`input.cell[data-r="${r-1}"][data-i="${i}"]`);
+  else if (e.key==='ArrowRight' && t.selectionStart===t.value.length) target = app.querySelector(`input.cell[data-r="${r}"][data-i="${i+1}"]`);
+  else if (e.key==='ArrowLeft' && t.selectionStart===0) target = app.querySelector(`input.cell[data-r="${r}"][data-i="${i-1}"]`);
+  if (target){ e.preventDefault(); target.focus(); target.select(); }
+});
+app.addEventListener('focusin', e=>{ if(e.target.matches('input.cell')) setTimeout(()=>e.target.select(),0); });
+app.addEventListener('paste', e=>{
+  const t=e.target; if(!t.matches('input.cell')) return;
+  const text = (e.clipboardData||window.clipboardData).getData('text'); if(!/[\t\n]/.test(text.trim())) return;
+  e.preventDefault(); const b=cur();
+  const lines = text.replace(/\r/g,'').split('\n').filter((l,ix,a)=>l.length||ix<a.length-1);
+  let n=0;
+  lines.forEach((line,li)=>{
+    const rowEl = app.querySelector(`input.cell[data-r="${+t.dataset.r+li}"][data-i="0"]`); if(!rowEl) return;
+    line.split('\t').forEach((cell,ci)=>{ const i=+t.dataset.i+ci; if(i>11) return; setMonthValue(b,i,rowEl.dataset.k,cell); n++; });
+  });
+  persist(b); renderAll(); toast(`${n} valeur${n>1?'s':''} collée${n>1?'s':''}`);
+});
+
+/* ---------- Actions ---------- */
+let pendingDelete=null;
+document.addEventListener('click', e=>{
+  const a = e.target.closest('[data-act]'); const exp = e.target.closest('[data-exp]');
+  const menu = document.getElementById('exportMenu');
+  if (e.target.closest('#btnExport')){ const open = menu.hidden; menu.hidden=!open; document.getElementById('btnExport').setAttribute('aria-expanded',String(open)); return; }
+  if (!e.target.closest('.menu')) { menu.hidden=true; document.getElementById('btnExport').setAttribute('aria-expanded','false'); }
+  if (exp){ menu.hidden=true; runExport(exp.dataset.exp); return; }
+  if (e.target.closest('#btnNew')){ openNewModal(); return; }
+  if (!a) return;
+  const b = cur();
+  switch(a.dataset.act){
+    case 'new-blank': closeModal(); addBudget(blankBudget()); toast('Budget vierge créé'); break;
+    case 'new-example': closeModal(); addBudget(exampleBudget(3)); toast('Exemple Hôtel Hemen créé'); break;
+    case 'new-copy': closeModal(); if(b){ const c=normalize(JSON.parse(JSON.stringify(b))); c.id=uid(); c.scenario=(b.scenario||'Base')+' (copie)'; c.status='draft'; addBudget(c); toast('Copie créée'); } break;
+    case 'new-next': closeModal(); if(b){ addBudget(rollForward(b)); toast('Exercice suivant préparé à partir du budget'); } break;
+    case 'duplicate': if(b){ const c=normalize(JSON.parse(JSON.stringify(b))); c.id=uid(); c.scenario=(b.scenario||'Base')+' (copie)'; c.status='draft'; addBudget(c); toast('Budget dupliqué'); } break;
+    case 'import': closeModal(); document.getElementById('importFile').click(); break;
+    case 'delete': if(b){ pendingDelete=b.id; showModal(`<h3>Supprimer ce budget ?</h3><p>« ${esc(b.hotel)}${b.scenario?' · '+esc(b.scenario):''} » sera supprimé${state.mode==='db'?' pour toutes les personnes qui ont accès à cette page':''}. Exportez-le en JSON avant si vous souhaitez le conserver.</p><div class="row"><button class="btn" data-act="close" type="button">Annuler</button><button class="btn primary" style="background:var(--bad);border-color:var(--bad)" data-act="confirm-delete" type="button">Supprimer</button></div>`); } break;
+    case 'confirm-delete': { const id=pendingDelete; closeModal(); if(id){ removeBudget(id).then(()=>{ state.currentId=null; pickCurrent(); renderAll(); toast('Budget supprimé'); }); } break; }
+    case 'close': closeModal(); break;
+    case 'adj-pm': { const v=parseNum(document.getElementById('a-pm').value); if(!isFinite(v)) return toast('Saisissez un pourcentage, par ex. +5 %'); b.months.forEach(m=>m.pm=Math.round(m.pm*(1+v/100))); persist(b); renderAll(); toast(`PM ajusté de ${F.var(v/100)} sur 12 mois`); break; }
+    case 'adj-to': { const v=parseNum(document.getElementById('a-to').value); if(!isFinite(v)) return toast('Saisissez des points, par ex. +2'); b.months.forEach(m=>m.to=Math.min(1,Math.max(0,m.to+v/100))); persist(b); renderAll(); toast(`TO ajusté de ${F.pts(v/100)} sur 12 mois`); break; }
+    case 'from-n1': { const v=parseNum(document.getElementById('a-n1').value); if(!isFinite(v)) return toast('Saisissez un pourcentage'); const {rows}=compute(b); b.months.forEach((m,i)=>{ if(rows[i].soldN1){ m.pm=Math.round(rows[i].pmN1*(1+v/100)); m.to=Math.min(1,rows[i].toN1); } }); persist(b); renderAll(); toast(`TO = N-1, PM = N-1 ${F.var(v/100)}`); break; }
+    case 'reset-extras': b.months.forEach(m=>m.extras=null); persist(b); renderAll(); toast('Extras recalculés depuis le N-1'); break;
+  }
+});
+document.getElementById('budgetSelect').addEventListener('change', e=>{ state.currentId=e.target.value; rememberCurrent(); if(state.mode==='local') lsWrite(); renderAll(); });
+document.getElementById('importFile').addEventListener('change', async e=>{
+  const f = e.target.files[0]; e.target.value=''; if(!f) return;
+  try{
+    const data = JSON.parse(await f.text());
+    const list = Array.isArray(data) ? data : (data.budgets||[data]);
+    let last=null; list.forEach(x=>{ const b=normalize(x); if(state.budgets.has(b.id)) b.id=uid(); state.budgets.set(b.id,b); persist(b,true); last=b; });
+    if(last){ state.currentId=last.id; rememberCurrent(); renderAll(); toast(`${list.length} budget${list.length>1?'s':''} importé${list.length>1?'s':''}`); }
+  }catch(err){ toast('Fichier illisible : choisissez un export JSON de cet outil.'); }
+});
+function rollForward(b){
+  const {rows} = compute(b);
+  const c = normalize(JSON.parse(JSON.stringify(b))); c.id=uid(); c.startYear=b.startYear+1; c.status='draft'; c.roomsN1=b.rooms; c.scenario=b.scenario||'Base';
+  c.months.forEach((m,i)=>{ m.n1={sold:Math.round(rows[i].nights), heb:Math.round(rows[i].heb), tot:Math.round(rows[i].tot)}; m.comment=''; m.extras=null; });
+  c.extrasCoef=1; c.notes='Préparé à partir du budget '+exerciseLabel(b)+' (utilisé comme référence N-1 en attendant le réalisé).';
+  return c;
+}
+function openNewModal(){
+  const b=cur();
+  showModal(`<h3>Nouveau budget</h3><p>Choisissez un point de départ.</p>
+  <div style="display:grid;gap:8px">
+    <button class="btn" data-act="new-blank" type="button">Grille vierge (20 chambres, à paramétrer)</button>
+    ${b?`<button class="btn" data-act="new-copy" type="button">Copie du budget affiché (nouveau scénario)</button>
+    <button class="btn" data-act="new-next" type="button">Exercice suivant : le budget affiché devient le N-1</button>`:''}
+    <button class="btn" data-act="new-example" type="button">Exemple Hôtel Hemen</button>
+    <button class="btn" data-act="import" type="button">Importer une sauvegarde JSON</button>
+  </div><div class="row"><button class="btn" data-act="close" type="button">Annuler</button></div>`);
+}
+function showModal(html){ closeModal(); const bg=document.createElement('div'); bg.className='modal-bg'; bg.id='modal'; bg.innerHTML=`<div class="modal" role="dialog" aria-modal="true">${html}</div>`; bg.addEventListener('click',e=>{ if(e.target===bg) closeModal(); }); document.body.appendChild(bg); const f=bg.querySelector('button'); if(f) f.focus(); }
+function closeModal(){ const m=document.getElementById('modal'); if(m) m.remove(); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeModal(); document.getElementById('exportMenu').hidden=true; } });
+let toastT=null;
+function toast(msg){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; t.setAttribute('role','status'); document.body.appendChild(t); } t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
+
+/* ---------- Exports ---------- */
+const loaded = {};
+function loadScript(src){ return loaded[src] || (loaded[src] = new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>{ delete loaded[src]; rej(new Error('load')); }; document.head.appendChild(s); })); }
+const fileBase = b => ('Budget_' + b.hotel + (b.scenario?'_'+b.scenario:'') + '_' + exerciseLabel(b)).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9_-]+/g,'_').replace(/_+/g,'_');
+async function saveFile(filename, blob){
+  let dl=null;
+  try{ if(window.claude && typeof window.claude.use==='function') dl = await window.claude.use('downloads'); }catch(e){ dl=null; }
+  if (dl){
+    try{ await dl.save({filename, data:blob}); toast('Fichier enregistré : '+filename); }
+    catch(e){ if(e&&e.code==='declined') toast('Téléchargement annulé'); else if(e&&e.code==='rate_limited') toast('Un téléchargement est déjà en attente'); else toast('Téléchargement indisponible ici'); }
+    return;
+  }
+  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); toast('Fichier téléchargé : '+filename);
+}
+async function runExport(kind){
+  const b=cur(); if(!b) return;
+  try{
+    if (kind==='json') return saveFile(fileBase(b)+'.json', new Blob([JSON.stringify(b,null,2)],{type:'application/json'}));
+    if (kind==='csv') return saveFile(fileBase(b)+'.csv', new Blob(['﻿'+buildCSV(b)],{type:'text/csv'}));
+    if (kind==='xlsx'){ toast('Préparation du fichier Excel…'); await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'); return saveFile(fileBase(b)+'.xlsx', await buildXLSX(b)); }
+    if (kind==='pdf'){ toast('Préparation du PDF…'); await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'); return saveFile(fileBase(b)+'.pdf', await buildPDF(b)); }
+  }catch(e){ console.error(e); toast('Export impossible : la bibliothèque n’a pas pu être chargée.'); }
+}
+function tableData(b){
+  const {rows,T} = compute(b); const Td=derive(T);
+  const out=[];
+  ROWS.forEach(R=>{
+    if (R.sect){ out.push({sect:R.sect}); return; }
+    if (R.comment){ out.push({label:R.l, cells:b.months.map(m=>m.comment), total:'', comment:1}); return; }
+    const f = R.input==='extras' ? 'eur2' : R.f;
+    const cells = rows.map(r=>{ const d=derive(r); return R.k in d ? d[R.k] : r[R.k]; });
+    const total = R.k in Td ? Td[R.k] : (R.k==='share'?1:T[R.k]);
+    out.push({label:R.l, k:R.k, f, cells, total, strong:R.strong, key:R.key, sign:R.sign});
+  });
+  return {rows,T,Td,out};
+}
+function buildCSV(b){
+  const {out,rows} = tableData(b);
+  const q = s => '"'+String(s).replace(/"/g,'""')+'"';
+  const num = (v,f) => v==null||!isFinite(v) ? '' : (['pct','var','pts'].includes(f) ? (v*100).toFixed(2) : (Math.round(v*100)/100).toString()).replace('.',',');
+  const lines = [[q(b.hotel+(b.scenario?' - '+b.scenario:'')), q('Budget '+exerciseLabel(b))].join(';'), ['Indicateur',...rows.map(r=>MONTHS[r.p.m]+' '+r.p.y),'Total'].map(q).join(';')];
+  out.forEach(o=>{ if(o.sect) return; const unit = ['pct','var'].includes(o.f)?' (%)':o.f==='pts'?' (pts)':o.f&&o.f.startsWith('eur')?' (€)':''; lines.push([q(o.label+unit), ...o.cells.map(c=>o.comment?q(c):num(c,o.f)), o.comment?'':num(o.total,o.f)].join(';')); });
+  return lines.join('\r\n');
+}
+
+async function buildXLSX(b){
+  const {rows} = compute(b);
+  const wb = new ExcelJS.Workbook(); wb.creator='Lewys'; wb.created=new Date(); wb.calcProperties = {fullCalcOnLoad:true};
+  const INK='FF1D1D1B', ELEC='FF3721CA', GOLD='FFB28958', LAV='FFEEF0FE', N1='FFF2F2F5', TOT='FFE9E7FB', LINE='FFE3E2E9';
+  const ws = wb.addWorksheet('Budget', {views:[{state:'frozen', xSplit:1, ySplit:4, showGridLines:false}], pageSetup:{orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0, paperSize:9}});
+  const C = i => String.fromCharCode(66+i); // month i -> column B..M
+  const TC = 'N';
+  ws.columns = [{width:34}, ...Array(12).fill({width:12.5}), {width:14}];
+  // Title
+  ws.mergeCells('A1:N1'); ws.getCell('A1').value = `${b.hotel}${b.scenario?' · '+b.scenario:''} — Budget prévisionnel ${exerciseLabel(b)}`;
+  ws.getCell('A1').font={name:'Calibri',size:16,bold:true,color:{argb:'FFFFFFFF'}}; ws.getCell('A1').fill={type:'pattern',pattern:'solid',fgColor:{argb:INK}}; ws.getRow(1).height=30; ws.getCell('A1').alignment={vertical:'middle',indent:1};
+  ws.mergeCells('A2:N2'); ws.getCell('A2').value = `Lewys · Revenue management  |  ${b.rooms} chambres budget, ${b.roomsN1} chambres N-1  |  ${periodLabel(b)}  |  Statut : ${STATUSES[b.status]}${b.author?'  |  '+b.author:''}  |  Édité le ${new Date().toLocaleDateString('fr-FR')}`;
+  ws.getCell('A2').font={size:10,color:{argb:'FFD9B68E'}}; ws.getCell('A2').fill={type:'pattern',pattern:'solid',fgColor:{argb:INK}}; ws.getCell('A2').alignment={indent:1};
+  // Parameters sheet
+  const ps = wb.addWorksheet('Paramètres',{views:[{showGridLines:false}]});
+  ps.columns=[{width:34},{width:18},{width:60}];
+  ps.addRow(['Paramètre','Valeur','Note']).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:INK}};});
+  [['Établissement',b.hotel,''],['Scénario',b.scenario,''],['Chambres (budget)',b.rooms,'Utilisé pour les chambres disponibles du budget'],['Chambres (N-1)',b.roomsN1,'Utilisé pour les chambres disponibles N-1'],['Taux extras vs N-1',b.extrasCoef,'Extras par nuitée budget = extras par nuitée N-1 × taux'],['Début d\'exercice',MONTHS[b.startMonth]+' '+b.startYear,''],['Statut',STATUSES[b.status],''],['Revenue manager',b.author,''],['Hypothèses',b.notes,'']].forEach(r=>ps.addRow(r));
+  ps.getCell('B6').numFmt='0%'; ['B4','B5','B6'].forEach(a=>{ps.getCell(a).font={bold:true,color:{argb:ELEC}};ps.getCell(a).fill={type:'pattern',pattern:'solid',fgColor:{argb:LAV}};});
+  ps.getCell('B10').alignment={wrapText:true,vertical:'top'}; ps.mergeCells('B10:C10'); ps.getRow(10).height=60;
+  const P = {rooms:"'Paramètres'!$B$4", roomsN1:"'Paramètres'!$B$5", coef:"'Paramètres'!$B$6"};
+  // Header row 4
+  const hr = ws.getRow(4); hr.values = ['Indicateur', ...rows.map(r=>`${MSHORT[r.p.m]} ${r.p.y}`), 'Total'];
+  hr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ELEC}};c.alignment={horizontal:'center',vertical:'middle'};}); hr.height=22; ws.getCell('A4').alignment={horizontal:'left',indent:1};
+  let rn = 5; const R = {};
+  const EUR='#,##0 "€"', EUR2='#,##0.00 "€"', INT='#,##0', PCT='0.0%', VARP='+0.0%;-0.0%;0.0%', VARE='+#,##0 "€";-#,##0 "€";0 "€"', PTS='+0.0" pts";-0.0" pts";0.0" pts"';
+  const sect = t => { const r=ws.getRow(rn++); r.getCell(1).value=t.toUpperCase(); r.getCell(1).font={bold:true,size:9,color:{argb:GOLD}}; r.height=20; r.getCell(1).alignment={vertical:'bottom'}; };
+  const addRow = (key,label,cellFn,totFn,fmt,opt={}) => {
+    const r = ws.getRow(rn); R[key]=rn;
+    r.getCell(1).value=label; r.getCell(1).alignment={indent:1};
+    for(let i=0;i<12;i++){ const c=r.getCell(i+2); c.value=cellFn(i,C(i),rn); c.numFmt=fmt; if(opt.input){ c.font={color:{argb:ELEC},bold:true}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:opt.n1?N1:LAV}}; if(opt.n1) c.font={color:{argb:INK}}; } }
+    const t=r.getCell(14); t.value=totFn?totFn(rn):null; t.numFmt=fmt; t.font={bold:true}; t.fill={type:'pattern',pattern:'solid',fgColor:{argb:TOT}};
+    if(opt.strong){ r.eachCell({includeEmpty:false},c=>{ c.font={...(c.font||{}),bold:true}; }); }
+    for(let col=1;col<=14;col++) r.getCell(col).border={bottom:{style:'thin',color:{argb:LINE}}};
+    rn++; return rn-1;
+  };
+  const sum = row => ({formula:`SUM(B${row}:M${row})`});
+  const f = (expr) => ({formula:expr});
+  sect('Capacité');
+  addRow('days','Nombre de jours',i=>rows[i].days,sum,INT);
+  addRow('closed','Jours de fermeture',i=>b.months[i].closed,sum,INT,{input:1});
+  addRow('avail','Chambres disponibles',(i,c)=>f(`(${c}${R.days}-${c}${R.closed})*${P.rooms}`),sum,INT);
+  sect('Hypothèses budget');
+  addRow('to',"Taux d'occupation (TO)",i=>b.months[i].to,()=>null,PCT,{input:1});
+  addRow('pm','Prix moyen HEB (PM)',i=>b.months[i].pm,()=>null,EUR,{input:1});
+  const extrasRow = rn; // filled after N-1 rows are known
+  addRow('extras','Extras par nuitée',()=>null,()=>null,EUR2,{input:1});
+  sect('Résultats budget');
+  addRow('nights','Nuitées',(i,c)=>f(`${c}${R.avail}*${c}${R.to}`),sum,INT);
+  addRow('heb','CA hébergement',(i,c)=>f(`${c}${R.nights}*${c}${R.pm}`),sum,EUR,{strong:1});
+  addRow('ext','CA extras',(i,c)=>f(`${c}${R.nights}*${c}${R.extras}`),sum,EUR);
+  addRow('tot','CA total',(i,c)=>f(`${c}${R.heb}+${c}${R.ext}`),sum,EUR,{strong:1});
+  addRow('revpar','RevPAR',(i,c)=>f(`IFERROR(${c}${R.heb}/${c}${R.avail},0)`),()=>null,EUR2);
+  addRow('trevpar','TRevPAR',(i,c)=>f(`IFERROR(${c}${R.tot}/${c}${R.avail},0)`),()=>null,EUR2);
+  addRow('share','Saisonnalité (% CA annuel)',(i,c)=>f(`IFERROR(${c}${R.tot}/$N$${R.tot},0)`),sum,PCT);
+  sect('Réalisé N-1');
+  addRow('daysN1','Nombre de jours N-1',i=>rows[i].daysN1,sum,INT);
+  addRow('availN1','Chambres disponibles N-1',(i,c)=>f(`${c}${R.daysN1}*${P.roomsN1}`),sum,INT);
+  addRow('soldN1','Chambres louées N-1',i=>b.months[i].n1.sold,sum,INT,{input:1,n1:1});
+  addRow('hebN1','CA hébergement N-1',i=>b.months[i].n1.heb,sum,EUR,{input:1,n1:1});
+  addRow('totN1','CA total N-1',i=>b.months[i].n1.tot,sum,EUR,{input:1,n1:1});
+  addRow('toN1','TO N-1',(i,c)=>f(`IFERROR(${c}${R.soldN1}/${c}${R.availN1},0)`),null,PCT);
+  addRow('pmN1','PM N-1',(i,c)=>f(`IFERROR(${c}${R.hebN1}/${c}${R.soldN1},0)`),null,EUR);
+  addRow('extN1','Extras par nuitée N-1',(i,c)=>f(`IFERROR((${c}${R.totN1}-${c}${R.hebN1})/${c}${R.soldN1},0)`),null,EUR2);
+  addRow('revparN1','RevPAR N-1',(i,c)=>f(`IFERROR(${c}${R.hebN1}/${c}${R.availN1},0)`),null,EUR2);
+  sect('Écarts vs N-1');
+  addRow('dHeb','Écart CA HEB',(i,c)=>f(`${c}${R.heb}-${c}${R.hebN1}`),null,VARE);
+  addRow('dHebP','Écart CA HEB %',(i,c)=>f(`IFERROR(${c}${R.heb}/${c}${R.hebN1}-1,"")`),null,VARP);
+  addRow('dTot','Écart CA total',(i,c)=>f(`${c}${R.tot}-${c}${R.totN1}`),null,VARE,{strong:1});
+  addRow('dTotP','Écart CA total %',(i,c)=>f(`IFERROR(${c}${R.tot}/${c}${R.totN1}-1,"")`),null,VARP,{strong:1});
+  addRow('dTo','Écart TO',(i,c)=>f(`(${c}${R.to}-${c}${R.toN1})*100`),null,PTS);
+  addRow('dPm','Écart PM %',(i,c)=>f(`IFERROR(${c}${R.pm}/${c}${R.pmN1}-1,"")`),null,VARP);
+  addRow('dRev','Écart RevPAR %',(i,c)=>f(`IFERROR(${c}${R.revpar}/${c}${R.revparN1}-1,"")`),null,VARP);
+  // Extras: overrides stay as values, automatic ones become formulas on N-1
+  for(let i=0;i<12;i++){ const c=C(i); ws.getCell(`${c}${extrasRow}`).value = b.months[i].extras!=null ? b.months[i].extras : f(`${c}${R.extN1}*${P.coef}`); if(b.months[i].extras==null) ws.getCell(`${c}${extrasRow}`).font={italic:true,color:{argb:ELEC}}; }
+  // Weighted totals
+  const T = (k,expr)=>{ ws.getCell(`${TC}${R[k]}`).value = f(expr); };
+  T('to',`IFERROR(N${R.nights}/N${R.avail},0)`); T('pm',`IFERROR(N${R.heb}/N${R.nights},0)`); T('extras',`IFERROR(N${R.ext}/N${R.nights},0)`);
+  T('revpar',`IFERROR(N${R.heb}/N${R.avail},0)`); T('trevpar',`IFERROR(N${R.tot}/N${R.avail},0)`);
+  ['toN1','pmN1','extN1','revparN1','dHeb','dHebP','dTot','dTotP','dTo','dPm','dRev'].forEach(k=>{ const tmpl = ws.getCell(`B${R[k]}`).value.formula.replace(/\bB(\d+)/g,'N$1'); T(k,tmpl); });
+  // Conditional colours on variance rows
+  ['dHeb','dHebP','dTot','dTotP','dTo','dPm','dRev'].forEach(k=>{
+    ws.addConditionalFormatting({ref:`B${R[k]}:N${R[k]}`, rules:[
+      {type:'cellIs',operator:'greaterThan',formulae:['0'],style:{font:{color:{argb:'FF1E7F4F'}}}},
+      {type:'cellIs',operator:'lessThan',formulae:['0'],style:{font:{color:{argb:'FFB4362F'}}}}]});
+  });
+  ws.getRow(R.daysN1).hidden = false;
+  sect('Commentaires');
+  const cr = ws.getRow(rn); cr.getCell(1).value='Commentaire du mois'; cr.getCell(1).alignment={indent:1,vertical:'top'};
+  b.months.forEach((m,i)=>{ const c=cr.getCell(i+2); c.value=m.comment||''; c.alignment={wrapText:true,vertical:'top'}; c.font={size:9}; });
+  cr.height = Math.min(120, 15*Math.max(1,...b.months.map(m=>Math.ceil((m.comment||'').length/18))));
+  rn+=2;
+  ws.getCell(`A${rn}`).value='Cellules bleues : hypothèses modifiables. Cellules grises : réalisé N-1. Les autres valeurs sont calculées par formule.'; ws.getCell(`A${rn}`).font={italic:true,size:9,color:{argb:'FF6B6A73'}};
+  // highlight key rows
+  [R.tot].forEach(r=>{ for(let col=1;col<=13;col++){ const c=ws.getRow(r).getCell(col); c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF1F0FD'}}; } });
+  const buf = await wb.xlsx.writeBuffer();
+  return new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+
+function svgToPng(svg, w, h){
+  return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.drawImage(img,0,0,w,h); res(c.toDataURL('image/png')); }; img.onerror=rej; img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); });
+}
+async function buildPDF(b){
+  const {jsPDF} = window.jspdf; const doc = new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const {rows,T,Td,out} = tableData(b);
+  const W=297, M=12;
+  const ink=[29,29,27], elec=[55,33,202], gold=[178,137,88], muted=[107,106,115];
+  const header = () => {
+    doc.setFillColor(...ink); doc.rect(0,0,W,20,'F');
+    if (logoPng) doc.addImage(logoPng,'PNG',M,5.5,28,8.9);
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text(`${b.hotel}${b.scenario?' · '+b.scenario:''}`, W-M, 9, {align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(217,182,142);
+    doc.text(`Budget prévisionnel ${exerciseLabel(b)} · ${periodLabel(b)} · ${STATUSES[b.status]}`, W-M, 14.5, {align:'right'});
+  };
+  let logoPng=null; try{ logoPng = await svgToPng(LOGO_SVG, 622, 198); }catch(e){}
+  header();
+  // KPI boxes
+  const kp = [['CA total',F.eur(T.tot),Td.dTotP,0],['CA hébergement',F.eur(T.heb),Td.dHebP,0],["Taux d'occupation",F.pct(T.to),Td.dTo,1],['Prix moyen',F.eur(T.pm),Td.dPm,0],['RevPAR',F.eur2(T.revpar),Td.dRev,0],['Nuitées',F.int(T.nights),pct(T.nights,T.soldN1),0]];
+  const bw=(W-2*M-5*4)/6; let y=25;
+  kp.forEach((k,i)=>{ const x=M+i*(bw+4); const lead=i===0;
+    doc.setFillColor(...(lead?elec:[244,243,250])); doc.roundedRect(x,y,bw,19,2,2,'F');
+    doc.setTextColor(...(lead?[255,255,255]:muted)); doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.text(k[0].toUpperCase(),x+4,y+5.5);
+    doc.setTextColor(...(lead?[255,255,255]:ink)); doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.text(k[1],x+4,y+12);
+    const v=k[2]; doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.setTextColor(...(lead?[230,228,255]:(v>0?[30,127,79]:v<0?[180,54,47]:muted))); doc.text('vs N-1 : '+(k[3]?F.pts(v):F.var(v)),x+4,y+16.5);
+  });
+  y += 24;
+  doc.setTextColor(...muted); doc.setFontSize(8);
+  doc.text(`${b.rooms} chambres budget · ${b.roomsN1} chambres N-1 · Extras/nuitée = ${F.dec(b.extrasCoef*100)} % du N-1${b.author?' · Revenue manager : '+b.author:''}`, M, y);
+  // Table
+  const head = [['Indicateur',...rows.map(r=>`${MSHORT[r.p.m]} ${String(r.p.y).slice(2)}`),'Total']];
+  const body = []; const meta=[];
+  out.forEach(o=>{
+    if (o.sect==='Commentaires') return;
+    if (o.sect){ body.push([{content:o.sect.toUpperCase(), colSpan:14, styles:{textColor:gold, fontStyle:'bold', fontSize:6.8, fillColor:[255,255,255], cellPadding:{top:1.4,bottom:0.4,left:1.5}}}]); meta.push(null); return; }
+    if (o.comment) return;
+    const fmt = v => F[o.f](v).replace(' €','€');
+    body.push([o.label, ...o.cells.map(fmt), fmt(o.total)]); meta.push(o);
+  });
+  doc.autoTable({head, body, startY:y+3, margin:{left:M,right:M,top:26}, theme:'plain',
+    styles:{font:'helvetica', fontSize:6.2, cellPadding:{top:0.62,bottom:0.62,left:1,right:1}, halign:'right', textColor:ink, lineColor:[227,226,233], lineWidth:{bottom:0.1}},
+    headStyles:{fillColor:elec, textColor:[255,255,255], fontStyle:'bold', halign:'right'},
+    columnStyles:{0:{halign:'left', cellWidth:44}, 13:{fontStyle:'bold', fillColor:[241,240,253]}},
+    didParseCell:d=>{ if(d.section!=='body') { if(d.column.index===0) d.cell.styles.halign='left'; return; } const o=meta[d.row.index]; if(!o) return;
+      if(o.strong) d.cell.styles.fontStyle='bold';
+      if(o.key && d.column.index>0) d.cell.styles.fillColor = d.column.index===13?[228,225,250]:[246,245,253];
+      if(o.sign && d.column.index>0){ const v = d.column.index===13?o.total:o.cells[d.column.index-1]; if(v>0.00001) d.cell.styles.textColor=[30,127,79]; else if(v<-0.00001) d.cell.styles.textColor=[180,54,47]; } },
+    didDrawPage:()=>{ if(doc.internal.getNumberOfPages()>1) header(); }
+  });
+  // Chart + notes page
+  doc.addPage(); header();
+  doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text("CA total et taux d'occupation, budget vs N-1", M, 30);
+  const C = {bar:'#3721CA', n1:'#C9C7D3', to:'#B28958', toN1:'#ADB7F9', text:'#6B6A73', grid:'#E3E2E9', fg:'#1D1D1B'};
+  try{ const png = await svgToPng(chartSVG(rows,C), 1920, 680); doc.addImage(png,'PNG',M,34,W-2*M,(W-2*M)*680/1920); }catch(e){}
+  let ly = 34 + (W-2*M)*680/1920 + 4;
+  const legend=[['CA budget','#3721CA'],['CA N-1','#C9C7D3'],['TO budget','#B28958'],['TO N-1','#ADB7F9']]; let lx=M;
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  legend.forEach(([t,c])=>{ doc.setFillColor(c); doc.rect(lx,ly-2.6,3,3,'F'); doc.setTextColor(...muted); doc.text(t,lx+4.5,ly); lx+=32; });
+  ly += 9;
+  const cm = b.months.map((m,i)=>m.comment?`${MONTHS[rows[i].p.m]} ${rows[i].p.y} : ${m.comment}`:null).filter(Boolean);
+  if (b.notes || cm.length){
+    doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text('Hypothèses et commentaires', M, ly); ly+=5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...ink);
+    const lines = doc.splitTextToSize([b.notes,...cm].filter(Boolean).join('\n'), W-2*M);
+    lines.forEach(l=>{ if(ly>200){ doc.addPage(); header(); ly=30; } doc.text(l,M,ly); ly+=4.2; });
+  }
+  const n = doc.internal.getNumberOfPages();
+  for(let p=1;p<=n;p++){ doc.setPage(p); doc.setFontSize(7); doc.setTextColor(...muted); doc.text(`Lewys · Experts en rentabilité hôtelière · Document édité le ${new Date().toLocaleDateString('fr-FR')}`, M, 204); doc.text(`${p} / ${n}`, W-M, 204, {align:'right'}); }
+  return doc.output('blob');
+}
+
+/* ---------- Boot ---------- */
+renderAll();
+initStore();
+})();
+</script>
+
+</body>
+</html>
