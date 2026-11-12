@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>/* Lewys Hub : cette page est pilotée depuis le Hub. Ouverte seule, elle repasse par le Hub (connexion, droits, bouton retour). */(function(){try{if(window.top!==window)document.documentElement.classList.add('in-hub');var hub=window.top!==window&&window.parent.LewysHubBridge;if(hub&&hub.online())window.LEWYS_STORE_ADAPTER=hub.suivi;if(window.top===window){var f=location.pathname.split("/").pop();location.replace("index.html#/page/"+encodeURIComponent(f));}}catch(e){}})();</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lewys · Suivi client</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lexend+Zetta:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  /* Charte Lewys (relevée sur lewys.fr) */
+  --brand:#3721CA; --brand-hover:#2B18A8; --brand-soft:#ECEAFB; --brand-soft-2:#DCD8F7;
+  --gold:#B28958; --gold-soft:#D9B68E; --gold-bg:#F7F0E6; --peri:#ADB7F9;
+  --ink:#1D1D1B; --ink-2:#2E2E30;
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-2:#F1F1F3; --border:#E3E3E8; --border-strong:#C9C9D2;
+  --text:#2E2E30; --text-2:#5A5A63; --text-3:#8A8A94;
+  --input-bg:#FFFFFF; --input-border:#C9C9D2;
+  --good:#1E9E5A; --warn:#E3A21A; --crit:#D2453B; --none:#A3A3AD;
+  --good-ink:#16794A; --warn-ink:#8F6200; --crit-ink:#B3362D;
+  --good-bg:#E8F6EE; --warn-bg:#FCF4E2; --crit-bg:#FBEAE8;
+  --ax-y:#3721CA; --ax-r:#B28958; --ax-t:#7D8CF2;
+  --grid:#ECECF1; --shadow:0 1px 2px rgba(29,29,27,.05),0 2px 8px rgba(29,29,27,.05);
+  --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 "Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+.hidden{display:none!important}
+.eyebrow{font-family:"Lexend Zetta","Plus Jakarta Sans",sans-serif;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
+
+/* ---------- Login ---------- */
+#login{min-height:100vh;display:grid;place-items:center;background:var(--ink);padding:24px 16px;position:relative;overflow:hidden}
+#login::before{content:"";position:absolute;inset:auto -20% -40% auto;width:70vmax;height:70vmax;border-radius:50%;background:radial-gradient(circle,rgba(55,33,202,.45),rgba(55,33,202,0) 60%)}
+#login::after{content:"";position:absolute;inset:-30% auto auto -20%;width:55vmax;height:55vmax;border-radius:50%;background:radial-gradient(circle,rgba(178,137,88,.25),rgba(178,137,88,0) 60%)}
+.login-card{position:relative;z-index:1;width:100%;max-width:400px;background:var(--surface);border-radius:18px;padding:30px 28px 26px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.login-card .logo{height:40px;color:var(--ink);display:block;margin-bottom:18px}
+.login-card h1{font-size:20px;margin:0 0 4px;color:var(--ink)}
+.login-card p{margin:0 0 18px;color:var(--text-2);font-size:13px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:12px;font-weight:600;color:var(--text-2)}
+.field input,.field select{border:1px solid var(--border-strong);border-radius:9px;padding:10px 12px;background:var(--surface);min-height:42px}
+.field input:focus,.field select:focus{outline:2px solid var(--brand);outline-offset:0;border-color:var(--brand)}
+.err{color:var(--crit-ink);font-size:12.5px;min-height:18px;margin:2px 0 8px}
+.login-foot{margin-top:14px;font-size:11.5px;color:var(--text-3);line-height:1.45}
+
+/* ---------- Shell ---------- */
+header.top{position:sticky;top:0;z-index:30;background:var(--ink);color:#fff}
+.top-inner{max-width:1320px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top-inner .logo{height:30px;color:#fff;flex:0 0 auto}
+.top-inner .app-name{font-size:12px;color:rgba(255,255,255,.6);border-left:1px solid rgba(255,255,255,.2);padding-left:12px;margin-right:auto}
+.userchip{display:flex;align-items:center;gap:10px;font-size:13px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:0 0 auto}
+.userchip .role{font-size:11px;color:var(--gold-soft)}
+.btn-top{background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12.5px;min-height:32px}
+.btn-top:hover{background:rgba(255,255,255,.08)}
+nav.tabs{max-width:1320px;margin:0 auto;padding:0 10px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px 9px;cursor:pointer;color:rgba(255,255,255,.66);font-weight:600;white-space:nowrap;font-size:13.5px}
+nav.tabs button:hover{color:#fff}
+nav.tabs button[aria-selected=true]{color:#fff;border-bottom-color:var(--gold)}
+.wrap{max-width:1320px;margin:0 auto;padding:4px 16px 56px}
+
+/* ---------- Contenu ---------- */
+.page-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:22px 0 4px}
+.page-head h2{font-size:22px;margin:2px 0 0;color:var(--ink);letter-spacing:-.01em}
+.page-head .spacer{flex:1}
+.sub{color:var(--text-2);font-size:13px;margin:4px 0 14px;max-width:900px}
+h3{font-size:15px;margin:0;color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-top:14px}
+.card-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.card-head .spacer{flex:1}
+.card-head .hint{font-size:12px;color:var(--text-3)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.spacer{flex:1}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+@media (max-width:960px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.grid2>.card,.grid3>.card{margin-top:0}
+.mt{margin-top:14px}
+
+.btn{background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:6px 12px;min-height:34px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-hover)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#fff}
+.btn.danger{color:var(--crit-ink);border-color:color-mix(in srgb,var(--crit) 55%,white)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{min-height:28px;padding:3px 9px;font-size:12px}
+.btn.block{width:100%;justify-content:center;min-height:42px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,select:focus,input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:1px}
+select,input[type=text],input[type=number],input[type=password],input[type=month]{background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:5px 9px;min-height:34px}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:9px;overflow:hidden;background:var(--surface)}
+.seg button{background:transparent;border:0;border-right:1px solid var(--border);padding:5px 11px;cursor:pointer;font-size:12.5px;font-weight:600;min-height:32px;color:var(--text-2)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--brand);color:#fff}
+.ctl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2);font-weight:600}
+
+/* Tuiles KPI */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:14px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--brand)}
+.tile.gold::before{background:var(--gold)}
+.tile.crit::before{background:var(--crit)}
+.tile .k{font-size:12px;color:var(--text-2);font-weight:600}
+.tile .v{font-size:25px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ink)}
+.tile .v small{font-size:13px;font-weight:600;color:var(--text-3)}
+.tile .s{font-size:12px;color:var(--text-3);margin-top:2px}
+.delta{font-size:11.5px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px;vertical-align:3px}
+.delta.up{color:var(--good-ink);background:var(--good-bg)} .delta.down{color:var(--crit-ink);background:var(--crit-bg)}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:0 -18px;padding:0 18px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 9px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);font-weight:700;white-space:nowrap;background:var(--surface)}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--brand)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.c,th.c{text-align:center}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:var(--surface-2)}
+tfoot td{font-weight:700;border-top:2px solid var(--border-strong);border-bottom:0}
+.muted{color:var(--text-3)}
+.small{font-size:12px}
+.hname{font-weight:700;color:var(--ink)}
+.strong{font-weight:700}
+
+/* Pastilles */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.pill .dot{width:7px;height:7px;border-radius:50%}
+.st-good{color:var(--good-ink);background:var(--good-bg)} .st-good .dot{background:var(--good)}
+.st-warn{color:var(--warn-ink);background:var(--warn-bg)} .st-warn .dot{background:var(--warn)}
+.st-crit{color:var(--crit-ink);background:var(--crit-bg)} .st-crit .dot{background:var(--crit)}
+.st-none{color:var(--text-2);background:var(--surface-2)} .st-none .dot{background:var(--none)}
+.st-brand{color:var(--brand);background:var(--brand-soft)} .st-brand .dot{background:var(--brand)}
+.st-gold{color:#7A5A30;background:var(--gold-bg)} .st-gold .dot{background:var(--gold)}
+.tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11.5px;font-weight:600;background:var(--surface-2);color:var(--text-2);white-space:nowrap}
+.score{display:inline-grid;place-items:center;min-width:24px;height:22px;padding:0 5px;border-radius:6px;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+.s1{background:#EFEFF3;color:#5A5A63}.s2{background:#E6E3FA;color:#3721CA}.s3{background:#CFC8F5;color:#2B18A8}.s4{background:#8C7BE6;color:#fff}.s5{background:#3721CA;color:#fff}
+
+/* Barres */
+.bar-h{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;min-width:70px}
+.bar-h span{display:block;height:100%;background:var(--brand);border-radius:4px}
+.bar-h.gold span{background:var(--gold)}
+.bar-h.over span{background:var(--crit)}
+.rank{list-style:none;margin:0;padding:0}
+.rank li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.rank li:last-child{border-bottom:0}
+.rank .n{font-weight:800;color:var(--text-3);font-size:12px}
+.rank .nm{font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank .meta{grid-column:2/4;font-size:11.5px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap}
+.rank .val{font-weight:800;font-variant-numeric:tabular-nums;text-align:right}
+.rank .val.good{color:var(--good-ink)} .rank .val.crit{color:var(--crit-ink)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--text-2);align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* Charts */
+.chart-box{position:relative;width:100%}
+.chart-box svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:8px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.12);min-width:170px;z-index:5;display:none}
+.tip b{display:block;font-size:13px;margin-bottom:3px;color:var(--ink)}
+.tip .l{display:flex;justify-content:space-between;gap:14px;color:var(--text-2)}
+.tip .l span:last-child{color:var(--text);font-variant-numeric:tabular-nums;font-weight:700}
+
+/* Bannières */
+.banner{margin:14px 0 0;padding:10px 14px;border-radius:10px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid}
+.banner .grow{flex:1;min-width:220px}
+.banner.warn{background:var(--warn-bg);border-color:#F0D9A5}
+.banner.info{background:var(--brand-soft);border-color:var(--brand-soft-2)}
+.banner.demo{background:var(--gold-bg);border-color:var(--gold-soft)}
+.banner.crit{background:var(--crit-bg);border-color:#F0C4C0}
+
+/* Inputs de saisie */
+input.in{background:var(--input-bg);border:1px solid var(--input-border);border-radius:7px;padding:4px 7px;min-height:32px;width:78px;text-align:right;font-variant-numeric:tabular-nums}
+input.in.wide{width:104px}
+input.in.txt{width:100%;min-width:130px;text-align:left}
+select.in{background:var(--input-bg);border:1px solid var(--input-border);border-radius:7px;min-height:32px;padding:3px 6px;max-width:150px}
+input.in:focus,select.in:focus{border-color:var(--brand)}
+.saved{font-size:12px;color:var(--good-ink);min-width:80px;font-weight:600}
+.check{color:var(--good-ink);font-weight:700}
+.empty{padding:30px 10px;text-align:center;color:var(--text-3)}
+
+/* Fiche client (panneau latéral) */
+.drawer-bg{position:fixed;inset:0;background:rgba(29,29,27,.45);z-index:50}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(760px,100vw);background:var(--bg);z-index:51;overflow-y:auto;box-shadow:-10px 0 40px rgba(0,0,0,.2)}
+.drawer-head{position:sticky;top:0;z-index:2;background:var(--ink);color:#fff;padding:16px 20px;display:flex;align-items:flex-start;gap:12px}
+.drawer-head h3{color:#fff;font-size:18px}
+.drawer-head .muted{color:rgba(255,255,255,.65)}
+.drawer-body{padding:4px 20px 30px}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 12px;font-size:13px}
+.kv dt{color:var(--text-3);font-weight:600}
+.kv dd{margin:0}
+.axis-row{display:grid;grid-template-columns:120px minmax(0,1fr) 40px;gap:10px;align-items:center;margin:6px 0}
+.axis-row .track{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+.axis-row .track span{display:block;height:100%;border-radius:5px}
+.fit{display:grid;grid-template-columns:minmax(0,1fr) 120px 56px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.fit:last-child{border-bottom:0}
+.callout{border-left:3px solid var(--gold);background:var(--gold-bg);padding:10px 12px;border-radius:0 8px 8px 0;font-size:13px}
+
+/* Modale */
+.modal-bg{position:fixed;inset:0;background:rgba(29,29,27,.5);z-index:60;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border-radius:14px;padding:22px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal h3{margin-bottom:6px}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:10px;font-size:13px;z-index:70;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+
+@media (max-width:640px){
+  .top-inner .app-name{display:none}
+  .userchip .uname{display:none}
+  .tile .v{font-size:21px}
+  .kv{grid-template-columns:110px minmax(0,1fr)}
+}
+
+/* Impression / PDF */
+@media print{
+  body{background:#fff;font-size:11.5px}
+  header.top{position:static;background:#fff;color:var(--ink);border-bottom:2px solid var(--brand)}
+  .top-inner .logo{color:var(--ink)} .top-inner .app-name{color:var(--text-2);border-color:var(--border)}
+  nav.tabs,.userchip,.btn,.btn-top,.seg,select,.no-print,#banners .btn{display:none!important}
+  .card,.tile{box-shadow:none;break-inside:avoid}
+  .wrap{max-width:none;padding:0}
+  .tbl-wrap{overflow:visible}
+  .drawer-bg{display:none}
+  .drawer{position:static;width:auto;box-shadow:none}
+}
+
+/* ----- Affichage dans le Hub Lewys ----- */
+.in-hub .top-inner{display:none}
+.in-hub header.top{background:#fff;color:var(--ink);border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(0,0,0,.02)}
+.in-hub nav.tabs{padding:6px 16px 0;gap:6px}
+.in-hub nav.tabs button{color:var(--text-2);font-size:14px;padding:10px 12px 10px}
+.in-hub nav.tabs button:hover{color:var(--ink)}
+.in-hub nav.tabs button[aria-selected=true]{color:#3721CA;border-bottom-color:#3721CA}
+.in-hub main.wrap{padding-top:22px}
+.hubsrc{font-size:10.5px;color:#1E8A5A;font-weight:600;margin-top:2px}
+input.in[readonly]{background:#F1FAF5;border-color:#BFE3CD;color:#1D5B3F;cursor:default}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="lewys-logo" viewBox="0 0 311.4 99.2">
+    <path d="M13.93 69.51L12.22 25.88C12.09 22.17 7.870 20.07 4.81 22.22L2.02 24.18C0.77 25.06 0 26.49 0 28.03L0 69.69C0 72.29 2.1 74.38 4.7 74.38L9.22 74.38C11.91 74.38 14.03 72.16 13.93 69.51Z" fill="#3721CA"/>
+    <path d="M48.16 6.58L40.37 1.15C38.75 0.01 36.6 0.01 34.97 1.15L25.67 7.64C24.37 8.57 23.6 10.08 23.68 11.67L25.62 62.93C25.78 67.36 31.52 69.16 34.1 65.56C36.3 62.48 38.11 59.36 39.84 56.2C43.29 49.87 46.03 43.64 48.1 37.46C50.15 31.31 51.19 25.64 51.19 20.45C51.19 15.25 51.85 8.46 48.18 6.56Z" fill="#B28958"/>
+    <path d="M73.35 24.18L69.29 21.32C66.65 19.49 63.01 20.71 62.08 23.78C61.15 26.86 59.96 30.09 59.05 33.17C56.64 41.44 54.54 45.92 50.36 54.43C48.21 58.83 45.87 63.120 43.37 67.33C41.51 70.46 43.77 74.41 47.41 74.41L70.64 74.41C73.24 74.41 75.34 72.32 75.34 69.72L75.34 28.03C75.34 26.49 74.6 25.06 73.35 24.18Z" fill="#ADB7F9"/>
+    <g fill="currentColor">
+      <path d="M122.17 63.73C122.17 68.05 126.77 67.41 126.77 70.67C126.77 72.85 125.34 73.46 122.52 73.83C120.53 74.2 118.37 74.28 116.11 74.28C113.85 74.28 111.52 74.2 109.26 73.83C106.55 73.56 105.11 72.85 105.11 70.67C105.11 67.44 109.71 68.05 109.71 63.73L109.71 17.5C109.71 13.82 105.11 13.37 105.11 9.76C105.11 7.7 106.84 6.42 110.08 6.42L114.68 6.42C119.28 6.42 122.17 8.68 122.17 13.45L122.17 63.73Z"/>
+      <path d="M153.4 66.43C158.37 66.43 162.44 63.73 166.24 59.49C166.95 58.67 167.86 58.22 168.58 58.22C169.74 58.22 170.46 59.3 169.56 61.74C166.02 71.02 158.98 74.62 149.76 74.73C138.39 74.730 129.43 68.42 127.17 56.17C124.65 42.58 133.31 29.06 148.86 28.5C156.62 28.5 163.95 30.38 167.65 37.89C170.36 43.29 168.28 47.72 162.41 50.5L143.81 59.25C143.17 59.62 142.9 60.23 143.35 60.79C145.61 64.76 148.96 66.46 153.37 66.46L153.4 66.43ZM151.96 47.4C155.66 45.78 157.57 43.88 155.85 40.64C154.41 37.67 151.41 35.05 147.63 35.05C146.92 35.05 146.09 35.13 145.3 35.42C138.89 37.04 137.43 44.43 139.23 51.83C139.42 52.36 139.77 52.65 140.22 52.65C140.3 52.65 140.48 52.65 140.67 52.57L151.96 47.43L151.96 47.4Z"/>
+      <path d="M228.98 41.09C227.42 45.86 222.66 60.2 222.66 60.2C222.58 60.57 222.39 60.84 222.21 60.84C222.13 60.84 221.94 60.57 221.83 60.2L214.16 36.24C212.88 31.74 209.82 29.3 206.39 29.3L201.34 29.3C197.65 29.3 196.3 30.28 196.3 32.08C196.3 34.41 200.18 35.05 201.53 39.1L201.98 40.64C202.25 41.46 202.25 42.37 201.98 43.16L195.58 61.18C195.5 61.56 195.31 61.71 195.13 61.71C194.94 61.71 194.86 61.53 194.67 61.08L186.46 36.22C185.19 31.79 182.21 29.27 178.7 29.27L173.73 29.27C170.04 29.27 168.68 30.25 168.68 32.05C168.68 34.39 172.56 35.02 173.92 39.08L183.67 66.91C185.03 71.34 187.74 73.93 191.17 73.93L193.24 73.93C196.77 73.93 198.4 71.31 200.02 66.91L205.07 52.94C205.25 52.49 205.33 52.3 205.52 52.3C205.6 52.3 205.78 52.49 205.89 52.94L210.94 66.91C212.29 71.42 215.08 73.93 218.43 73.93L220.51 73.93C224.39 73.93 225.88 71.47 227.36 66.91C229.28 61.03 233.66 49.44 235.66 43.58C236.24 41.86 236.53 40.54 237.17 39.18C237.57 38.34 237.94 37.81 238.74 37.91C239.54 38.02 239.51 38.95 239.59 40.03L240.97 73.22C241.16 76.93 240.57 80.32 239.24 83.32C237.91 86.29 236.96 88.06 234.91 89.73C232.94 91.35 232.28 91.83 231.19 92.01C229.76 92.28 227.47 91.75 226.27 90.53C224.57 88.78 223.24 86.47 220.4 86.55C219.26 86.55 218.22 87 217.26 87.88C216.33 88.78 215.86 90.08 215.86 91.72C215.86 93.81 216.65 95.62 218.22 97.07C219.79 98.53 222.39 99.22 225.8 99.22C228.37 99.22 233.24 98.88 237.09 96.54C240.17 94.66 243.28 92.09 246.34 88.88C250.51 84.48 253.67 80.77 255.93 77.51C258.7 73.54 261.19 69.3 263.35 64.9C265.5 60.52 267.23 56.12 268.48 51.85C269.75 47.53 269.99 44.64 269.46 39.87C268.61 31.9 265.1 29.06 262.1 29.06C259.28 29.06 257.66 30.86 257.66 33.96C257.66 35.42 258.01 36.77 258.7 38.02C259.26 39.03 259.81 40.24 260.32 41.68C260.82 43.03 261.06 44.96 261.06 47.37C261.06 49.79 260.56 52.65 259.55 55.64C258.54 58.69 257.1 62.3 255.48 65.5C253.86 68.71 251.1 73.14 250.48 71.36C249.37 68.13 249.5 39.1 249.5 39.1C249.37 35.58 248.65 33.09 247.35 31.52C245.99 29.91 244.11 29.17 241.82 29.06C241.18 29.06 239.54 29.06 238.55 29.11C232.76 29.54 231.96 32.03 228.98 41.04L228.98 41.09Z"/>
+      <path d="M292.4 28.5C298.46 28.5 306.59 29.85 309.38 36.16C311.19 40.3 308.74 43.45 305.58 43.45C304.41 43.45 303.13 43 301.96 42.02C297.53 38.23 295.72 34.55 291.57 34.55C287.06 34.55 284.53 36.8 284.53 40.59C284.53 50.58 310.66 47.08 311 61.24C311.37 72.05 300.61 74.76 291.12 74.76C281.63 74.76 273.950 72.24 271.24 66.27C269.43 62.3 271.61 59.96 274.59 59.96C276.03 59.96 277.67 60.5 279.03 61.77C283.09 65.29 285.09 68.71 290.51 68.71C295.11 68.71 298.11 66.64 298.11 63.04C298.03 55.01 272.28 57.9 272.28 42.68C272.28 32.05 282.85 28.53 292.42 28.53L292.4 28.5Z"/>
+    </g>
+  </symbol>
+</svg>
+
+<!-- ===== Écran de connexion ===== -->
+<section id="login">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <svg class="logo" viewBox="0 0 311.4 99.2" role="img" aria-label="Lewys"><use href="#lewys-logo"/></svg>
+    <div class="eyebrow">Espace interne</div>
+    <h1>Suivi client</h1>
+    <p>Profils clients, attributions, temps passé et rentabilité des contrats.</p>
+    <div class="field"><label for="lgUser">Identifiant</label><input id="lgUser" name="username" autocomplete="username" required></div>
+    <div class="field"><label for="lgPass">Mot de passe</label><input id="lgPass" name="password" type="password" autocomplete="current-password" required></div>
+    <div class="err" id="lgErr" role="alert"></div>
+    <button class="btn primary block" type="submit">Se connecter</button>
+    <div class="login-foot" id="lgFoot"></div>
+  </form>
+</section>
+
+<!-- ===== Application ===== -->
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="top-inner">
+      <svg class="logo" viewBox="0 0 311.4 99.2" role="img" aria-label="Lewys"><use href="#lewys-logo"/></svg>
+      <span class="app-name">Suivi client</span>
+      <div class="userchip">
+        <span class="avatar" id="uAvatar"></span>
+        <span class="uname"><span id="uName"></span><br><span class="role" id="uRole"></span></span>
+        <button class="btn-top" id="btnPwd" title="Changer mon mot de passe">Mot de passe</button>
+        <button class="btn-top" id="btnLogout">Déconnexion</button>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+  </header>
+  <main class="wrap">
+    <div id="banners"></div>
+    <div id="view"></div>
+  </main>
+</div>
+<div id="overlay"></div>
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   COUCHE DONNÉES
+   Par défaut : stockage du navigateur (localStorage) — propre à ce poste.
+   Pour brancher un serveur, définir AVANT ce script :
+     window.LEWYS_STORE_ADAPTER = { load: async () => data|null, save: async (data) => {} }
+   ===================================================================== */
+var STORAGE_KEY = 'lewys.pilotage.v1';
+var SESSION_KEY = 'lewys.pilotage.session';
+var DATA_VERSION = 1;
+var DEFAULT_PWD = 'Lewys2026';
+
+var localAdapter = {
+  load: function(){ try{ var s = localStorage.getItem(STORAGE_KEY); return Promise.resolve(s ? JSON.parse(s) : null); }catch(e){ return Promise.resolve(null); } },
+  save: function(d){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }catch(e){} return Promise.resolve(); }
+};
+var adapter = (window.LEWYS_STORE_ADAPTER && typeof window.LEWYS_STORE_ADAPTER.load === 'function') ? window.LEWYS_STORE_ADAPTER : localAdapter;
+
+/* ---------- SHA-256 (hachage des mots de passe, sans dépendance) ---------- */
+function sha256(ascii){
+  function rr(v,a){return (v>>>a)|(v<<(32-a));}
+  var mp=Math.pow, mw=mp(2,32), i, j, res='';
+  var words=[], bl=ascii.length*8;
+  var hash=sha256.h=sha256.h||[], k=sha256.k=sha256.k||[], pl=k.length;
+  var ic={};
+  for(var c=2; pl<64; c++){ if(!ic[c]){ for(i=0;i<313;i+=c) ic[i]=c; hash[pl]=(mp(c,.5)*mw)|0; k[pl++]=(mp(c,1/3)*mw)|0; } }
+  ascii+='\x80'; while(ascii.length%64-56) ascii+='\x00';
+  for(i=0;i<ascii.length;i++){ j=ascii.charCodeAt(i); if(j>>8) return; words[i>>2]|=j<<((3-i)%4)*8; }
+  words[words.length]=((bl/mw)|0); words[words.length]=(bl);
+  hash=hash.slice(0,8);
+  for(j=0;j<words.length;){
+    var w=words.slice(j,j+=16), oh=hash; hash=hash.slice(0,8);
+    for(i=0;i<64;i++){
+      var w15=w[i-15], w2=w[i-2], a=hash[0], e=hash[4];
+      var t1=hash[7]+(rr(e,6)^rr(e,11)^rr(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]+(w[i]=(i<16)?w[i]:(w[i-16]+(rr(w15,7)^rr(w15,18)^(w15>>>3))+w[i-7]+(rr(w2,17)^rr(w2,19)^(w2>>>10)))|0);
+      var t2=(rr(a,2)^rr(a,13)^rr(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+      hash=[(t1+t2)|0].concat(hash); hash[4]=(hash[4]+t1)|0; hash.length=8;
+    }
+    for(i=0;i<8;i++) hash[i]=(hash[i]+oh[i])|0;
+  }
+  for(i=0;i<8;i++) for(j=3;j+1;j--){ var b=(hash[i]>>(j*8))&255; res+=((b<16)?0:'')+b.toString(16); }
+  return res;
+}
+function utf8(s){ return unescape(encodeURIComponent(s)); }
+function hashPwd(salt, pwd){ return sha256(utf8(salt + '::' + pwd)); }
+function newSalt(){ var a=''; for(var i=0;i<16;i++) a+=Math.floor(Math.random()*16).toString(16); return a; }
+
+/* ---------- Données initiales (issues de Matrice_charge_portefeuille_Lewys.xlsx) ---------- */
+function defaultData(){
+  function U(id,name,login,role,isAdmin,cost,capacity,sy,sr,st){
+    var salt = newSalt();
+    return {id:id,name:name,login:login,role:role,isAdmin:isAdmin,cost:cost,capacity:capacity,skills:{y:sy,r:sr,t:st},active:true,salt:salt,pwd:hashPwd(salt,DEFAULT_PWD),mustChange:true};
+  }
+  // H(nom, ville, ch, interlocuteur, groupe, distrib, pms, RM actuel, phase, Y, R, T, h/mois estimées, honoraires/mois, attribution proposée, signaux)
+  function H(name,city,rooms,contact,group,distrib,pms,rm,phase,y,r,t,estH,fee,prop,notes){
+    return {id:slug(name),name:name,city:city,rooms:rooms,contact:contact,group:group,distrib:distrib||'',pms:pms||'',rm:rm,proposed:prop,phase:phase,status:'Actif',
+      y:y,r:r,t:t,estHours:estH,fixe:fee,varRate:null,varEstimate:null,notes:notes||''};
+  }
+  var IMMO = 'Immovation';
+  return {
+    version: DATA_VERSION,
+    users: [],   // chargés depuis le serveur du Hub après connexion
+    hotels: [],  // idem : aucune donnée client dans ce fichier public
+    entries: {},      // "AAAA-Www|hotelId|userId" -> {h, tk, note, ts}
+    submissions: {},  // "userId|AAAA-Www" -> date ISO de validation
+    settings: { marginTarget: 0.5, costsConfirmed: false, heavy: 11, medium: 7, high: 4, onboardingBoost: 0.2, w:{y:1,r:1,t:1} }
+  };
+}
+function normalize(d){
+  var base = defaultData();
+  if(!d || typeof d !== 'object') return base;
+  d.version = DATA_VERSION;
+  d.users = Array.isArray(d.users) && d.users.length ? d.users : base.users;
+  d.hotels = Array.isArray(d.hotels) ? d.hotels : base.hotels;
+  d.entries = d.entries && typeof d.entries === 'object' ? d.entries : {};
+  d.submissions = d.submissions && typeof d.submissions === 'object' ? d.submissions : {};
+  d.settings = Object.assign({}, base.settings, d.settings || {});
+  d.settings.w = Object.assign({y:1,r:1,t:1}, d.settings.w || {});
+  d.users.forEach(function(u){ u.skills = Object.assign({y:3,r:3,t:3}, u.skills||{}); });
+  return d;
+}
+
+/* ---------- État ---------- */
+var state = {
+  data:null, me:null, demo:false, realBackup:null,
+  tab:null, week:null, month:null, year:null,
+  rankMetric:'eurH', sort:{}, entryFor:null, rentPeriod:'month', rentGroup:'hotel', histWeeks:8, clientFilter:'', confirmArmed:null
+};
+var saveTimer = null;
+function persist(immediate){
+  if(state.demo) return;
+  clearTimeout(saveTimer);
+  var run = function(){ Promise.resolve(adapter.save(state.data)).then(flashSaved); };
+  if(immediate) run(); else saveTimer = setTimeout(run, 350);
+}
+function flashSaved(){
+  document.querySelectorAll('.saved').forEach(function(el){ el.textContent = 'Enregistré ✓'; });
+  clearTimeout(flashSaved._t);
+  flashSaved._t = setTimeout(function(){ document.querySelectorAll('.saved').forEach(function(el){ el.textContent=''; }); }, 1500);
+}
+function toast(msg){
+  var t = document.createElement('div'); t.className='toast'; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2600);
+}
+
+/* ---------- Utilitaires ---------- */
+var nf0 = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
+var nf1 = new Intl.NumberFormat('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1});
+function eur(v){ return (v==null||isNaN(v)||!isFinite(v)) ? '–' : nf0.format(Math.round(v)) + ' €'; }
+function eurk(v){ if(v==null||isNaN(v)) return '–'; return Math.abs(v)>=10000 ? nf1.format(v/1000)+' k€' : eur(v); }
+function hrs(v){ return (v==null||isNaN(v)) ? '–' : nf1.format(v) + ' h'; }
+function pct(v){ return (v==null||isNaN(v)||!isFinite(v)) ? '–' : nf0.format(Math.round(v*100)) + ' %'; }
+function n0(v){ return (v==null||isNaN(v)) ? '–' : nf0.format(v); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function num(v){ if(v===''||v==null) return null; var n = parseFloat(String(v).replace(',','.')); return isNaN(n) ? null : n; }
+function $(id){ return document.getElementById(id); }
+function slug(s){ return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'').slice(0,28) || ('h'+Date.now().toString(36)); }
+function initials(n){ return String(n||'?').split(/[\s-]+/).map(function(p){return p.charAt(0);}).join('').slice(0,2).toUpperCase(); }
+
+function isoWeekKey(d){
+  var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  var y = t.getUTCFullYear(); var ys = new Date(Date.UTC(y,0,1));
+  var w = Math.ceil(((t - ys) / 864e5 + 1) / 7);
+  return y + '-W' + String(w).padStart(2,'0');
+}
+function weekMonday(key){
+  var p = key.split('-W'); var y = +p[0], w = +p[1];
+  var jan4 = new Date(Date.UTC(y,0,4)); var d = jan4.getUTCDay() || 7;
+  var mon = new Date(jan4); mon.setUTCDate(jan4.getUTCDate() - d + 1 + (w-1)*7); return mon;
+}
+function addWeeks(key, n){
+  var m = weekMonday(key); m.setUTCDate(m.getUTCDate() + 7*n);
+  return isoWeekKey(new Date(m.getUTCFullYear(), m.getUTCMonth(), m.getUTCDate()));
+}
+function monthOfWeek(key){ var m = weekMonday(key); m.setUTCDate(m.getUTCDate()+3); return m.getUTCFullYear() + '-' + String(m.getUTCMonth()+1).padStart(2,'0'); }
+var MOIS = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+var MOIS_L = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+function monthLabel(ym, long){ var p = ym.split('-'); return (long?MOIS_L:MOIS)[+p[1]-1] + ' ' + p[0]; }
+function weekLabel(key, short){
+  var m = weekMonday(key); var e = new Date(m); e.setUTCDate(m.getUTCDate()+6);
+  var w = 'S' + key.split('-W')[1];
+  if(short) return w;
+  var a = m.getUTCDate() + (m.getUTCMonth()!==e.getUTCMonth() ? ' ' + MOIS[m.getUTCMonth()] : '');
+  return w + ' · ' + a + '–' + e.getUTCDate() + ' ' + MOIS[e.getUTCMonth()];
+}
+function lastWeeks(endKey, n){ var out = []; for(var i=n-1;i>=0;i--) out.push(addWeeks(endKey, -i)); return out; }
+function weeksOfMonth(ym){
+  var p = ym.split('-'); var d = new Date(+p[0], +p[1]-1, 1); var out = []; var k = isoWeekKey(d);
+  if(monthOfWeek(k) !== ym) k = addWeeks(k,1);
+  while(monthOfWeek(k) === ym){ out.push(k); k = addWeeks(k,1); }
+  return out;
+}
+function addMonths(ym, n){ var p = ym.split('-'); var d = new Date(+p[0], +p[1]-1+n, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function user(id){ return state.data.users.find(function(u){return u.id===id;}); }
+function hotel(id){ return state.data.hotels.find(function(h){return h.id===id;}); }
+function uname(id){ var u = user(id); return u ? u.name : (id || '—'); }
+function entryKey(w,h,u){ return w+'|'+h+'|'+u; }
+function isAdmin(){ return !!(state.me && state.me.isAdmin); }
+function activeHotels(){ return state.data.hotels.filter(function(h){ return h.status !== 'Inactif'; }); }
+
+/* ---------- Profil client (logique de l'onglet Cotation) ---------- */
+function profileOf(h){
+  var S = state.data.settings, w = S.w;
+  var y = +h.y||0, r = +h.r||0, t = +h.t||0;
+  var score = (y*w.y + r*w.r + t*w.t) * (h.phase==='Onboarding' ? 1 + S.onboardingBoost : 1);
+  score = Math.round(score*10)/10;
+  var level = score >= S.heavy ? 'Lourd' : score >= S.medium ? 'Moyen' : 'Léger';
+  var dom;
+  if(y===r && r===t) dom = 'Équilibré';
+  else { var mx = Math.max(y,r,t); dom = y===mx ? 'Yield' : r===mx ? 'Relation' : 'Technique'; }
+  var hiY = y >= S.high, hiR = r >= S.high;
+  var quad = hiY && hiR ? 'Double exigence' : hiY ? 'Analytique' : hiR ? 'Relationnel' : 'Autonome';
+  return {score:score, level:level, dom:dom, quad:quad, techHeavy: t >= S.high};
+}
+var QUAD_INFO = {
+  'Double exigence': {pill:'st-crit', need:'Profil senior : analyse poussée ET relation sensible.', rm:'Associé (senior yield + relation)'},
+  'Analytique':      {pill:'st-brand', need:"Forte charge d'analyse, client peu demandeur.", rm:'Production déléguable à un alternant, revue par un associé'},
+  'Relationnel':     {pill:'st-gold', need:'Le temps part en pédagogie et en échanges ; yield standardisable.', rm:'Interlocuteur stable et diplomate'},
+  'Autonome':        {pill:'st-none', need:'Faible charge sur les deux axes.', rm:'Junior / alternant avec routine cadrée'}
+};
+function recoProfile(h){
+  var p = profileOf(h); var q = QUAD_INFO[p.quad];
+  var txt = q.rm;
+  if(p.techHeavy) txt += ' + appui technique (CM/PMS, mapping)';
+  if(h.phase === 'Onboarding') txt += ' · onboarding : suivi rapproché les 3 premiers mois';
+  return txt;
+}
+/* Adéquation RM ↔ hôtel : écart entre les exigences de l'hôtel (notes 1-5) et les compétences du RM (1-5) */
+function fitScore(h, u){
+  var need = {y:+h.y||0, r:+h.r||0, t:+h.t||0}, sk = u.skills || {y:3,r:3,t:3};
+  var gap = 0, over = 0;
+  ['y','r','t'].forEach(function(a){ gap += Math.max(0, need[a]-sk[a]); over += Math.max(0, sk[a]-need[a]-1); });
+  return Math.max(0, Math.min(100, Math.round(100 - gap*22 - over*4)));
+}
+function rmLoad(uid){
+  var hs = activeHotels().filter(function(h){return h.rm===uid;});
+  return {count:hs.length, rooms:hs.reduce(function(a,h){return a+(h.rooms||0);},0), score:Math.round(hs.reduce(function(a,h){return a+profileOf(h).score;},0)*10)/10};
+}
+function bestRMs(h){
+  return state.data.users.filter(function(u){return u.active;}).map(function(u){ return {u:u, fit:fitScore(h,u), load:rmLoad(u.id)}; })
+    .sort(function(a,b){ return b.fit-a.fit || a.load.score-b.load.score; });
+}
+
+/* ---------- Calculs de rentabilité ---------- */
+function monthlyValue(h){ return (h.fixe||0) + ((h.varRate||0) > 0 ? (h.varEstimate||0) : 0); }
+function hasContract(h){ return monthlyValue(h) > 0; }
+function weeksWithData(){
+  var s = {};
+  Object.keys(state.data.entries).forEach(function(k){ s[k.split('|')[0]] = true; });
+  return s;
+}
+/* weeks : liste de semaines ISO ; ne compte que celles saisies (≥ 1 ligne) et ≤ semaine en cours */
+function computeStats(weeks){
+  var cur = isoWeekKey(new Date());
+  var wd = weeksWithData();
+  var counted = weeks.filter(function(w){ return wd[w] && w <= cur; });
+  var cset = {}; counted.forEach(function(w){ cset[w]=true; });
+  var H = {}, U = {};
+  state.data.hotels.forEach(function(h){ H[h.id] = {id:h.id, h:h, hours:0, tickets:0, cost:0, revenue:0, byUser:{}, notes:[]}; });
+  state.data.users.forEach(function(u){ U[u.id] = {id:u.id, u:u, hours:0, tickets:0, cost:0, value:0, byHotel:{}}; });
+  Object.keys(state.data.entries).forEach(function(k){
+    var p = k.split('|'); var w=p[0], hid=p[1], uid=p[2];
+    if(!cset[w] || !H[hid]) return;
+    var e = state.data.entries[k]; var s = H[hid]; var hh = +e.h||0, tk = +e.tk||0;
+    var c = (user(uid)||{cost:0}).cost || 0;
+    s.hours += hh; s.tickets += tk; s.cost += hh*c;
+    s.byUser[uid] = (s.byUser[uid]||0) + hh;
+    if(e.note) s.notes.push({w:w, uid:uid, note:e.note});
+    if(U[uid]){ U[uid].hours += hh; U[uid].tickets += tk; U[uid].cost += hh*c; U[uid].byHotel[hid] = (U[uid].byHotel[hid]||0) + hh; }
+  });
+  var n = counted.length;
+  state.data.hotels.forEach(function(h){
+    var s = H[h.id];
+    s.revenue = h.status==='Inactif' ? 0 : monthlyValue(h) * 12/52 * n;
+    s.margin = s.revenue - s.cost;
+    s.marginPct = s.revenue > 0 ? s.margin/s.revenue : null;
+    s.eurH = s.hours > 0 ? s.revenue/s.hours : null;
+    s.costH = s.hours > 0 ? s.cost/s.hours : null;
+    s.status = statusOf(s);
+    s.profile = profileOf(h);
+  });
+  // Valeur produite par salarié = somme (heures sur l'hôtel × €/h de l'hôtel)
+  Object.keys(U).forEach(function(uid){
+    var a = U[uid];
+    Object.keys(a.byHotel).forEach(function(hid){ var s = H[hid]; if(s && s.eurH!=null) a.value += a.byHotel[hid]*s.eurH; });
+    a.eurH = a.hours>0 ? a.value/a.hours : null;
+    a.margin = a.value - a.cost;
+  });
+  var T = {hours:0,tickets:0,cost:0,revenue:0,crit:0,warn:0};
+  Object.keys(H).forEach(function(id){ var s=H[id]; if(s.h.status==='Inactif') return; T.hours+=s.hours; T.tickets+=s.tickets; T.cost+=s.cost; T.revenue+=s.revenue; if(s.status.k==='crit') T.crit++; if(s.status.k==='warn') T.warn++; });
+  T.margin = T.revenue - T.cost; T.marginPct = T.revenue>0 ? T.margin/T.revenue : null; T.eurH = T.hours>0 ? T.revenue/T.hours : null; T.costH = T.hours>0 ? T.cost/T.hours : null;
+  return {weeks:weeks, counted:counted, n:n, H:H, U:U, T:T};
+}
+function statusOf(s){
+  if(!hasContract(s.h)) return {k:'none', label:'Contrat non renseigné'};
+  if(s.hours <= 0) return {k:'none', label:'Pas de temps saisi'};
+  if(s.marginPct < 0) return {k:'crit', label:'Déficitaire'};
+  if(s.marginPct < state.data.settings.marginTarget) return {k:'warn', label:'Sous la cible'};
+  return {k:'good', label:'Rentable'};
+}
+function weeksOfYear(y){ var out=[]; var k = isoWeekKey(new Date(y,0,4)); while(+monthOfWeek(k).slice(0,4) === y){ out.push(k); k = addWeeks(k,1); } return out; }
+function periodWeeks(kind){
+  if(kind==='month') return weeksOfMonth(state.month);
+  if(kind==='year') return weeksOfYear(state.year);
+  if(kind==='12w') return lastWeeks(isoWeekKey(new Date()), 12);
+  return weeksOfMonth(state.month);
+}
+function periodLabel(kind){
+  if(kind==='month') return monthLabel(state.month, true);
+  if(kind==='year') return 'année ' + state.year;
+  return '12 dernières semaines';
+}
+
+/* ---------- Export ---------- */
+function download(name, content, type){
+  var blob = new Blob([content], {type:type}); var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function toCsv(rows){
+  return '﻿' + rows.map(function(r){ return r.map(function(c){
+    if(typeof c === 'number') c = String(Math.round(c*100)/100).replace('.',',');
+    c = String(c==null?'':c); return /[;"\n]/.test(c) ? '"'+c.replace(/"/g,'""')+'"' : c; }).join(';'); }).join('\r\n');
+}
+function exportCsv(name, rows){ download(name+'-'+todayStr()+'.csv', toCsv(rows), 'text/csv;charset=utf-8'); toast('Export CSV téléchargé'); }
+
+/* =====================================================================
+   AUTHENTIFICATION
+   ===================================================================== */
+function login(loginId, pwd){
+  var u = state.data.users.find(function(x){ return x.active && x.login.toLowerCase() === String(loginId).trim().toLowerCase(); });
+  if(!u || hashPwd(u.salt, pwd) !== u.pwd) return null;
+  return u;
+}
+function startSession(u){
+  state.me = u;
+  try{ sessionStorage.setItem(SESSION_KEY, u.id); }catch(e){}
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('uAvatar').textContent = initials(u.name); $('uName').textContent = u.name;
+  $('uRole').textContent = u.isAdmin ? 'Administrateur' : 'Revenue manager';
+  state.tab = u.isAdmin ? 'dash' : 'saisie';
+  state.entryFor = u.id;
+  renderTabs(); render();
+  var sso=false; try{ sso = window.top!==window && sessionStorage.getItem('lewys.hub.sso')==='1'; }catch(e){}
+  if(u.mustChange && !sso) openPwdModal(true); // dans le Hub, la connexion est déjà faite
+}
+function logout(){
+  try{ sessionStorage.removeItem(SESSION_KEY); }catch(e){}
+  if(state.demo){ state.data = state.realBackup; state.demo = false; state.realBackup = null; }
+  state.me = null; closeDrawer();
+  $('app').classList.add('hidden'); $('login').classList.remove('hidden');
+  $('lgPass').value=''; $('lgErr').textContent=''; $('lgUser').focus();
+}
+$('loginForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var u = login($('lgUser').value, $('lgPass').value);
+  if(!u){ $('lgErr').textContent = 'Identifiant ou mot de passe incorrect.'; return; }
+  $('lgErr').textContent = ''; startSession(u);
+});
+$('btnLogout').addEventListener('click', logout);
+$('btnPwd').addEventListener('click', function(){ openPwdModal(false); });
+
+function openPwdModal(forced){
+  var o = $('overlay');
+  o.innerHTML = '<div class="modal-bg"><form class="modal" id="pwdForm"><h3>'+(forced?'Choisissez votre mot de passe':'Changer mon mot de passe')+'</h3>'+
+    '<p class="sub" style="margin-top:0">'+(forced?'Première connexion : remplacez le mot de passe provisoire par un mot de passe personnel (8 caractères minimum).':'8 caractères minimum.')+'</p>'+
+    '<div class="field"><label for="pw1">Nouveau mot de passe</label><input id="pw1" type="password" autocomplete="new-password" minlength="8" required></div>'+
+    '<div class="field"><label for="pw2">Confirmer</label><input id="pw2" type="password" autocomplete="new-password" minlength="8" required></div>'+
+    '<div class="err" id="pwErr"></div><div class="row"><span class="spacer"></span>'+(forced?'':'<button type="button" class="btn" id="pwCancel">Annuler</button>')+'<button class="btn primary" type="submit">Enregistrer</button></div></form></div>';
+  $('pw1').focus();
+  if(!forced) $('pwCancel').addEventListener('click', function(){ o.innerHTML=''; });
+  $('pwdForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var a = $('pw1').value, b = $('pw2').value;
+    if(a.length < 8){ $('pwErr').textContent = '8 caractères minimum.'; return; }
+    if(a !== b){ $('pwErr').textContent = 'Les deux saisies ne correspondent pas.'; return; }
+    if(a === DEFAULT_PWD){ $('pwErr').textContent = 'Choisissez un mot de passe différent du provisoire.'; return; }
+    var u = state.demo ? (state.realBackup.users.find(function(x){return x.id===state.me.id;}) || state.me) : state.me;
+    [u, state.me].forEach(function(x){ x.salt = newSalt(); x.pwd = hashPwd(x.salt, a); x.mustChange = false; });
+    if(state.demo){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state.realBackup)); }catch(err){} } else persist(true);
+    o.innerHTML=''; toast('Mot de passe mis à jour');
+  });
+}
+
+/* =====================================================================
+   NAVIGATION
+   ===================================================================== */
+var TABS_ADMIN = [['dash','Tableau de bord'],['clients','Profils clients'],['rentab','Rentabilité'],['equipe','Équipe'],['contrats','Attributions & contrats'],['saisie','Saisie hebdo'],['params','Utilisateurs & paramètres']];
+var TABS_RM = [['saisie','Ma saisie hebdo'],['histo','Mon historique']];
+function renderTabs(){
+  var tabs = isAdmin() ? TABS_ADMIN : TABS_RM;
+  $('tabs').innerHTML = tabs.map(function(t){ return '<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(state.tab===t[0])+'">'+t[1]+'</button>'; }).join('');
+  $('tabs').querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ state.tab = b.getAttribute('data-tab'); state.confirmArmed=null; renderTabs(); render(); window.scrollTo(0,0); }); });
+}
+function render(){
+  renderBanners();
+  var allowed = (isAdmin() ? TABS_ADMIN : TABS_RM).map(function(t){return t[0];});
+  if(allowed.indexOf(state.tab) < 0) state.tab = allowed[0];
+  var fn = {dash:renderDash, clients:renderClients, rentab:renderRentab, equipe:renderEquipe, contrats:renderContrats, saisie:renderSaisie, histo:renderHisto, params:renderParams}[state.tab];
+  fn();
+}
+function renderBanners(){
+  var b = [];
+  if(state.demo) b.push('<div class="banner demo"><span class="grow"><b>Mode démonstration</b> — heures, tickets et honoraires manquants sont fictifs pour visualiser les écrans. Rien n’est enregistré.</span><button class="btn sm" data-act="exit-demo">Quitter la démo</button></div>');
+  if(isAdmin() && !state.data.settings.costsConfirmed && !state.demo) b.push('<div class="banner warn"><span class="grow">Les <b>coûts horaires, capacités et compétences</b> de l’équipe sont des valeurs par défaut : à valider pour fiabiliser marges et recommandations.</span><button class="btn sm" data-act="goto" data-tab="params">Ouvrir les paramètres</button></div>');
+  if(isFridayReminder()) b.push('<div class="banner info"><span class="grow"><b>C’est la fin de semaine :</b> pensez à saisir vos heures et tickets de la '+esc(weekLabel(isoWeekKey(new Date())))+' puis à valider.</span>'+(state.tab!=='saisie'?'<button class="btn sm primary" data-act="goto" data-tab="saisie">Saisir ma semaine</button>':'')+'</div>');
+  $('banners').innerHTML = b.join('');
+}
+function isFridayReminder(){
+  var d = new Date().getDay(); if(d!==5 && d!==6 && d!==0) return false;
+  if(!state.me) return false;
+  var mine = activeHotels().some(function(h){return h.rm===state.me.id;}); if(!mine) return false;
+  return !state.data.submissions[state.me.id+'|'+isoWeekKey(new Date())];
+}
+document.addEventListener('click', function(e){
+  var t = e.target.closest('[data-act]'); if(!t) return;
+  var a = t.getAttribute('data-act');
+  if(a==='goto'){ state.tab = t.getAttribute('data-tab'); renderTabs(); render(); window.scrollTo(0,0); }
+  if(a==='demo'){ state.realBackup = state.data; state.data = buildDemo(); state.demo = true; var me = user(state.me.id); if(me) state.me = me; render(); toast('Mode démo activé'); }
+  if(a==='exit-demo'){ state.data = state.realBackup || state.data; state.realBackup = null; state.demo = false; var m2 = user(state.me.id); if(m2) state.me = m2; render(); }
+  if(a==='open-hotel'){ e.stopPropagation(); openHotel(t.getAttribute('data-id')); }
+  if(a==='print'){ window.print(); }
+});
+
+/* ---------- Petits composants ---------- */
+function tile(k,v,s,cls){ return '<div class="tile '+(cls||'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+(s||'')+'</div></div>'; }
+function statusPill(st){ return '<span class="pill st-'+st.k+'"><span class="dot"></span>'+esc(st.label)+'</span>'; }
+function quadPill(q){ return '<span class="pill '+QUAD_INFO[q].pill+'"><span class="dot"></span>'+esc(q)+'</span>'; }
+function levelPill(l){ return '<span class="pill '+(l==='Lourd'?'st-crit':l==='Moyen'?'st-warn':'st-good')+'">'+l+'</span>'; }
+function sc(v){ if(v==null||v==='') return '<span class="muted">–</span>'; var c = Math.max(1,Math.min(5,Math.round(v))); return '<span class="score s'+c+'">'+String(v).replace('.',',')+'</span>'; }
+function deltaBadge(cur, prev){
+  if(prev==null || !isFinite(prev) || prev===0 || cur==null) return '';
+  var d = (cur-prev)/Math.abs(prev); if(Math.abs(d) < 0.005) return '';
+  return '<span class="delta '+(d>0?'up':'down')+'">'+(d>0?'+':'')+nf0.format(Math.round(d*100))+' %</span>';
+}
+function pageHead(eyebrow, title, right){
+  return '<div class="page-head"><div><div class="eyebrow">'+eyebrow+'</div><h2>'+title+'</h2></div><span class="spacer"></span>'+(right||'')+'</div>';
+}
+function monthPicker(){
+  return '<div class="row no-print"><button class="btn sm" id="mPrev" aria-label="Mois précédent">‹</button><select id="mSel" aria-label="Mois">'+
+    (function(){ var o=''; var cur = monthOfWeek(isoWeekKey(new Date())); for(var i=0;i<24;i++){ var ym = addMonths(cur,-i); o += '<option value="'+ym+'"'+(ym===state.month?' selected':'')+'>'+monthLabel(ym,true)+'</option>'; } return o; })()+
+    '</select><button class="btn sm" id="mNext" aria-label="Mois suivant">›</button></div>';
+}
+function bindMonthPicker(cb){
+  var cur = monthOfWeek(isoWeekKey(new Date()));
+  $('mSel').addEventListener('change', function(){ state.month = this.value; state.year = +state.month.slice(0,4); cb(); });
+  $('mPrev').addEventListener('click', function(){ state.month = addMonths(state.month,-1); state.year = +state.month.slice(0,4); cb(); });
+  $('mNext').addEventListener('click', function(){ if(state.month >= cur) return; state.month = addMonths(state.month,1); state.year = +state.month.slice(0,4); cb(); });
+}
+function hotelLink(h){ return '<a href="#" class="hname" data-act="open-hotel" data-id="'+esc(h.id)+'" style="text-decoration:none">'+esc(h.name)+'</a>'; }
+function niceMax(v){ if(!(v>0)) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))); var n = v/p; var m = n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10; return m*p; }
+function tipBind(box, sel, htmlFn){
+  var tip = box.querySelector('.tip');
+  box.querySelectorAll(sel).forEach(function(g){
+    var show = function(){
+      tip.innerHTML = htmlFn(g); tip.style.display='block';
+      var bb = box.getBoundingClientRect(), gb = g.getBoundingClientRect();
+      var left = gb.left - bb.left + gb.width/2 + 12; if(left + 200 > bb.width) left = gb.left - bb.left - 210; if(left<0) left = 4;
+      tip.style.left = left+'px'; tip.style.top = Math.max(0, gb.top - bb.top - 10)+'px';
+    };
+    g.addEventListener('mouseenter', show); g.addEventListener('focus', show);
+    g.addEventListener('mouseleave', function(){ tip.style.display='none'; });
+  });
+}
+
+/* =====================================================================
+   TABLEAU DE BORD
+   ===================================================================== */
+function renderDash(){
+  var el = $('view');
+  var Cm = computeStats(weeksOfMonth(state.month));
+  var Cp = computeStats(weeksOfMonth(addMonths(state.month,-1)));
+  var Cy = computeStats(weeksOfYear(state.year));
+  var pw = function(C,f){ return C.n ? C.T[f]/C.n : null; };
+  var act = activeHotels();
+  var mrr = act.reduce(function(a,h){return a+monthlyValue(h);},0);
+  var withC = act.filter(hasContract).length;
+  var rooms = act.reduce(function(a,h){return a+(h.rooms||0);},0);
+  var curW = isoWeekKey(new Date()), prevW = addWeeks(curW,-1);
+  var rms = state.data.users.filter(function(u){ return u.active && act.some(function(h){return h.rm===u.id;}); });
+  var subPrev = rms.filter(function(u){ return state.data.submissions[u.id+'|'+prevW]; }).length;
+  var subCur = rms.filter(function(u){ return state.data.submissions[u.id+'|'+curW]; }).length;
+
+  var html = pageHead('Accueil · '+esc(monthLabel(state.month,true)), 'Bonjour '+esc(state.me.name),
+    monthPicker()+' <button class="btn sm no-print" data-act="print">Imprimer / PDF</button>');
+  html += '<p class="sub">Vue d’ensemble du portefeuille : valeur des contrats, temps réellement passé et rentabilité. Les calculs ne retiennent que les semaines saisies du mois ('+Cm.n+' / '+weeksOfMonth(state.month).length+') ; les variations comparent les moyennes hebdomadaires au mois précédent.</p>';
+
+  if(!Object.keys(state.data.entries).length){
+    html += '<div class="banner info"><span class="grow">Aucune heure saisie pour l’instant : les indicateurs de rentabilité apparaîtront dès les premières saisies du vendredi.</span><button class="btn sm gold" data-act="demo">Voir avec des données de démo</button></div>';
+  }
+
+  html += '<div class="tiles">';
+  html += tile('Honoraires mensuels', eurk(mrr), withC+' / '+act.length+' contrats renseignés');
+  html += tile('Heures saisies — '+MOIS[+state.month.slice(5)-1], hrs(Cm.T.hours)+' '+deltaBadge(pw(Cm,'hours'), pw(Cp,'hours')), Cm.n ? hrs(Cm.T.hours/Cm.n)+' par semaine' : 'aucune semaine saisie');
+  html += tile('Taux horaire client moyen', (Cm.T.eurH!=null?eur(Cm.T.eurH):'–')+' <small>/h</small> '+deltaBadge(Cm.T.eurH, Cp.T.eurH), 'honoraires ÷ heures passées', 'gold');
+  html += tile('Coût du temps passé', eur(Cm.T.cost), Cm.T.costH!=null ? 'soit '+eur(Cm.T.costH)+' / h en moyenne' : 'au coût horaire de chacun');
+  html += tile('Marge sur le mois', eur(Cm.T.margin)+' '+deltaBadge(pw(Cm,'margin'), pw(Cp,'margin')), pct(Cm.T.marginPct)+' · cible '+pct(state.data.settings.marginTarget), Cm.T.marginPct!=null && Cm.T.marginPct < state.data.settings.marginTarget ? 'crit' : '');
+  html += tile('Demandes / tickets', n0(Cm.T.tickets)+' '+deltaBadge(pw(Cm,'tickets'), pw(Cp,'tickets')), Cm.T.hours ? nf1.format(Cm.T.tickets/Cm.T.hours*10)+' tickets pour 10 h' : 'sur le mois');
+  html += tile('Portefeuille', act.length+' <small>hôtels</small>', nf0.format(rooms)+' chambres renseignées');
+  html += tile('Saisies validées', subPrev+' / '+rms.length, 'semaine dernière ('+weekLabel(prevW,true)+') · '+subCur+' cette semaine', subPrev < rms.length ? 'crit' : '');
+  html += '</div>';
+
+  // Classements
+  var metric = state.rankMetric;
+  html += '<div class="card"><div class="card-head"><h3>Hôtels les plus et les moins rentables</h3><span class="spacer"></span>'+
+    '<div class="seg no-print" role="group" aria-label="Critère"><button data-metric="eurH" aria-pressed="'+(metric==='eurH')+'">Taux horaire (€/h)</button><button data-metric="margin" aria-pressed="'+(metric==='margin')+'">Marge (€)</button><button data-metric="marginPct" aria-pressed="'+(metric==='marginPct')+'">Marge (%)</button></div></div>';
+  html += '<div class="grid2">';
+  html += rankCard('Top 5 — '+monthLabel(state.month,true), Cm, metric, true);
+  html += rankCard('Flop 5 — '+monthLabel(state.month,true), Cm, metric, false);
+  html += rankCard('Top 5 — année '+state.year, Cy, metric, true);
+  html += rankCard('Flop 5 — année '+state.year, Cy, metric, false);
+  html += '</div><p class="muted small" style="margin:10px 0 0">Seuls les hôtels avec un contrat renseigné et du temps saisi sont classés. Coût horaire moyen de l’équipe sur la période : '+(Cy.T.costH!=null?eur(Cy.T.costH)+'/h':'–')+' — en dessous, un contrat coûte plus qu’il ne rapporte.</p></div>';
+
+  // Évolution annuelle + KPIs annuels
+  html += '<div class="grid3">';
+  html += '<div class="card"><div class="card-head"><h3>Évolution '+state.year+' — honoraires vs coût du temps</h3><span class="spacer"></span><div class="legend"><span><i style="background:var(--brand)"></i>Honoraires (semaines saisies)</span><span><i style="background:var(--gold-soft)"></i>Coût du temps</span><span><i style="background:var(--good);border-radius:50%"></i>Marge</span></div></div><div class="chart-box" id="yearChart"><div class="tip"></div></div></div>';
+  html += '<div class="card"><h3>Cumul '+state.year+'</h3><div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">'+
+    tile('Honoraires', eurk(Cy.T.revenue), Cy.n+' semaines saisies')+
+    tile('Heures', nf0.format(Cy.T.hours)+' h', n0(Cy.T.tickets)+' tickets')+
+    tile('€ / heure', eur(Cy.T.eurH), 'taux horaire client', 'gold')+
+    tile('Marge', eurk(Cy.T.margin), pct(Cy.T.marginPct)+' des honoraires')+
+    '</div>';
+  var cnt = {}; act.forEach(function(h){ var q = profileOf(h).quad; cnt[q]=(cnt[q]||0)+1; });
+  html += '<h3 style="margin-top:16px">Profil du portefeuille</h3><div style="margin-top:8px">';
+  ['Double exigence','Analytique','Relationnel','Autonome'].forEach(function(q){
+    var c = cnt[q]||0;
+    html += '<div class="axis-row"><span class="small strong">'+q+'</span><div class="track"><span style="width:'+(act.length?c/act.length*100:0)+'%;background:'+(q==='Double exigence'?'var(--crit)':q==='Analytique'?'var(--brand)':q==='Relationnel'?'var(--gold)':'var(--none)')+'"></span></div><span class="small num">'+c+'</span></div>';
+  });
+  html += '</div></div></div>';
+
+  // Équipe + alertes
+  html += '<div class="grid2">';
+  html += '<div class="card"><div class="card-head"><h3>Équipe — '+monthLabel(state.month,true)+'</h3><span class="spacer"></span><button class="btn sm ghost no-print" data-act="goto" data-tab="equipe">Détail →</button></div><div class="tbl-wrap"><table><thead><tr><th>RM</th><th class="num">Heures</th><th class="num">Tickets</th><th class="num">Valeur / h</th><th class="num">Coût / h</th><th>Taux de charge</th></tr></thead><tbody>';
+  state.data.users.filter(function(u){return u.active;}).forEach(function(u){
+    var a = Cm.U[u.id]; var cap = u.capacity ? u.capacity*Cm.n : 0; var load = cap ? a.hours/cap : null;
+    html += '<tr><td><span class="hname">'+esc(u.name)+'</span> <span class="muted small">'+esc(u.role)+'</span></td><td class="num">'+(a.hours?hrs(a.hours):'–')+'</td><td class="num">'+(a.tickets||'–')+'</td><td class="num strong">'+eur(a.eurH)+'</td><td class="num muted">'+eur(u.cost)+'</td>'+
+      '<td style="min-width:120px"><div class="row" style="gap:8px;flex-wrap:nowrap"><div class="bar-h'+(load>1?' over':'')+'" style="flex:1"><span style="width:'+Math.min(100,(load||0)*100)+'%"></span></div><span class="small" style="min-width:36px;text-align:right">'+pct(load)+'</span></div></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  var alerts = [];
+  var noC = act.filter(function(h){return !hasContract(h);});
+  if(noC.length) alerts.push(['warn', noC.length+' contrat'+(noC.length>1?'s':'')+' sans honoraires renseignés', noC.slice(0,6).map(function(h){return h.name;}).join(', ')+(noC.length>6?'…':''), 'contrats']);
+  var deficit = Object.keys(Cm.H).map(function(k){return Cm.H[k];}).filter(function(s){return s.status.k==='crit';});
+  if(deficit.length) alerts.push(['crit', deficit.length+' hôtel'+(deficit.length>1?'s':'')+' déficitaire'+(deficit.length>1?'s':'')+' ce mois-ci', deficit.map(function(s){return s.h.name+' ('+eur(s.eurH)+'/h)';}).join(', '), 'rentab']);
+  var late = rms.filter(function(u){ return !state.data.submissions[u.id+'|'+prevW]; });
+  if(late.length) alerts.push(['warn', 'Semaine '+weekLabel(prevW,true)+' non validée', late.map(function(u){return u.name;}).join(', '), 'equipe']);
+  var heavy = act.filter(function(h){return profileOf(h).level==='Lourd';});
+  if(heavy.length) alerts.push(['info', heavy.length+' client'+(heavy.length>1?'s':'')+' à charge lourde', heavy.map(function(h){return h.name+' → '+uname(h.rm);}).join(', '), 'clients']);
+  var mism = act.filter(function(h){ var u = user(h.rm); return u && fitScore(h,u) < 60; });
+  if(mism.length) alerts.push(['info', mism.length+' attribution'+(mism.length>1?'s':'')+' à revoir (adéquation < 60 %)', mism.map(function(h){return h.name+' → '+uname(h.rm);}).join(', '), 'contrats']);
+  html += '<div class="card"><h3>Points d’attention</h3><div style="margin-top:8px">';
+  if(!alerts.length) html += '<div class="empty">Rien à signaler.</div>';
+  alerts.forEach(function(a){
+    html += '<div class="banner '+(a[0]==='crit'?'crit':a[0]==='warn'?'warn':'info')+'" style="margin-top:8px"><span class="grow"><b>'+esc(a[1])+'</b><br><span class="small">'+esc(a[2])+'</span></span><button class="btn sm no-print" data-act="goto" data-tab="'+a[3]+'">Voir</button></div>';
+  });
+  html += '</div></div></div>';
+
+  el.innerHTML = html;
+  bindMonthPicker(renderDash);
+  el.querySelectorAll('[data-metric]').forEach(function(b){ b.addEventListener('click', function(){ state.rankMetric = b.getAttribute('data-metric'); renderDash(); }); });
+  drawYearChart($('yearChart'));
+}
+
+function rankCard(title, C, metric, top){
+  var list = Object.keys(C.H).map(function(k){return C.H[k];}).filter(function(s){ return hasContract(s.h) && s.hours>0 && s.h.status!=='Inactif'; });
+  list.sort(function(a,b){ return top ? (b[metric]-a[metric]) : (a[metric]-b[metric]); });
+  list = list.slice(0,5);
+  var html = '<div><div class="small strong" style="color:'+(top?'var(--good-ink)':'var(--crit-ink)')+';margin-bottom:2px">'+(top?'▲ ':'▼ ')+esc(title)+'</div>';
+  if(!list.length) return html + '<div class="empty small">Pas encore de données sur la période.</div></div>';
+  html += '<ol class="rank">';
+  list.forEach(function(s,i){
+    var v = metric==='eurH' ? eur(s.eurH)+'/h' : metric==='margin' ? eur(s.margin) : pct(s.marginPct);
+    var good = s.status.k==='good';
+    html += '<li><span class="n">'+(i+1)+'</span><span class="nm">'+hotelLink(s.h)+'</span><span class="val '+(good?'good':s.status.k==='crit'?'crit':'')+'">'+v+'</span>'+
+      '<span class="meta"><span>'+esc(uname(s.h.rm))+'</span><span>'+hrs(s.hours)+'</span><span>'+eur(s.revenue)+' d’honoraires</span><span>marge '+pct(s.marginPct)+'</span></span></li>';
+  });
+  return html + '</ol></div>';
+}
+
+function drawYearChart(box){
+  if(!box) return;
+  var months = []; for(var m=1;m<=12;m++) months.push(state.year+'-'+String(m).padStart(2,'0'));
+  var data = months.map(function(ym){ var C = computeStats(weeksOfMonth(ym)); return {ym:ym, rev:C.T.revenue, cost:C.T.cost, margin:C.T.margin, hours:C.T.hours, n:C.n, eurH:C.T.eurH}; });
+  var W = Math.max(320, box.clientWidth||640), H = 260, m = {l:54,r:10,t:12,b:28};
+  var iw = W-m.l-m.r, ih = H-m.t-m.b;
+  var maxV = niceMax(Math.max.apply(null, data.map(function(d){return Math.max(d.rev,d.cost);}).concat([100]))*1.05);
+  var minV = Math.min(0, Math.min.apply(null, data.map(function(d){return d.margin;})));
+  if(minV<0) minV = -niceMax(-minV);
+  var Y = function(v){ return m.t + ih - (v-minV)/(maxV-minV)*ih; };
+  var bw = iw/12, barW = Math.max(5, Math.min(18, bw/2-4));
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Honoraires et coût du temps par mois">';
+  for(var i=0;i<=4;i++){ var v = minV + (maxV-minV)*i/4; s += '<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="var(--grid)"/><text x="'+(m.l-8)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="10.5" fill="var(--text-3)">'+eurk(v)+'</text>'; }
+  if(minV<0) s += '<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(0)+'" y2="'+Y(0)+'" stroke="var(--border-strong)"/>';
+  var pts = [];
+  data.forEach(function(d,i){
+    var x0 = m.l + i*bw + bw/2;
+    s += '<g class="mb" data-i="'+i+'" tabindex="0"><rect x="'+(m.l+i*bw)+'" y="'+m.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>';
+    if(d.rev>0) s += '<rect x="'+(x0-barW-1)+'" y="'+Y(d.rev)+'" width="'+barW+'" height="'+(Y(0)-Y(d.rev))+'" rx="3" fill="var(--brand)"/>';
+    if(d.cost>0) s += '<rect x="'+(x0+1)+'" y="'+Y(d.cost)+'" width="'+barW+'" height="'+(Y(0)-Y(d.cost))+'" rx="3" fill="var(--gold-soft)"/>';
+    s += '</g><text x="'+x0+'" y="'+(H-8)+'" text-anchor="middle" font-size="10.5" fill="'+(d.ym===state.month?'var(--brand)':'var(--text-3)')+'" font-weight="'+(d.ym===state.month?'700':'400')+'">'+MOIS[i]+'</text>';
+    if(d.n) pts.push([x0, Y(d.margin)]);
+  });
+  if(pts.length>1) s += '<polyline points="'+pts.map(function(p){return p.join(',');}).join(' ')+'" fill="none" stroke="var(--good)" stroke-width="2"/>';
+  pts.forEach(function(p){ s += '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="var(--good)" stroke="var(--surface)" stroke-width="1.5" pointer-events="none"/>'; });
+  s += '</svg>';
+  var tip = box.querySelector('.tip'); box.innerHTML = s; box.appendChild(tip);
+  tipBind(box, 'g.mb', function(g){ var d = data[+g.getAttribute('data-i')];
+    return '<b>'+esc(monthLabel(d.ym,true))+'</b>'+(d.n?'':'<div class="muted">Aucune semaine saisie</div>')+
+      '<div class="l"><span>Honoraires</span><span>'+eur(d.rev)+'</span></div><div class="l"><span>Coût du temps</span><span>'+eur(d.cost)+'</span></div>'+
+      '<div class="l"><span>Marge</span><span>'+eur(d.margin)+'</span></div><div class="l"><span>Heures</span><span>'+hrs(d.hours)+'</span></div><div class="l"><span>€ / h</span><span>'+eur(d.eurH)+'</span></div>'; });
+}
+
+/* =====================================================================
+   PROFILS CLIENTS
+   ===================================================================== */
+function renderClients(){
+  var el = $('view');
+  var C = computeStats(lastWeeks(isoWeekKey(new Date()), 12));
+  var q = state.clientFilter.toLowerCase();
+  var list = activeHotels().filter(function(h){ return !q || (h.name+' '+h.city+' '+h.group+' '+uname(h.rm)).toLowerCase().indexOf(q)>=0; });
+  var sk = state.sort.clients || {key:'score', dir:-1};
+  list = list.map(function(h){ var p = profileOf(h); var best = bestRMs(h)[0]; var cur = user(h.rm); return {h:h, p:p, best:best, curFit: cur?fitScore(h,cur):null, s:C.H[h.id]}; });
+  list.sort(function(a,b){
+    var va, vb;
+    switch(sk.key){
+      case 'name': return sk.dir * a.h.name.localeCompare(b.h.name,'fr');
+      case 'rm': return sk.dir * uname(a.h.rm).localeCompare(uname(b.h.rm),'fr');
+      case 'quad': return sk.dir * a.p.quad.localeCompare(b.p.quad,'fr');
+      case 'fit': va=a.curFit||0; vb=b.curFit||0; break;
+      case 'hw': va=a.s.hours; vb=b.s.hours; break;
+      case 'tk': va=a.s.tickets; vb=b.s.tickets; break;
+      default: va=a.p.score; vb=b.p.score;
+    }
+    return sk.dir*(va-vb);
+  });
+
+  var html = pageHead('Clients', 'Profils clients & profil RM recommandé', '<button class="btn sm no-print" id="expClients">Exporter CSV</button> <button class="btn sm no-print" data-act="print">Imprimer / PDF</button>');
+  html += '<p class="sub">Chaque hôtel est noté de 1 à 5 sur trois axes de charge (grille de la matrice) : <b>Yield</b> (temps d’analyse), <b>Relation client</b>, <b>Technique & distribution</b>. Le quadrant Yield × Relation donne le besoin et le profil de RM adapté ; l’adéquation compare ces exigences aux compétences de chaque RM. Heures et tickets : 12 dernières semaines.</p>';
+  var cnt = {}; list.forEach(function(x){ cnt[x.p.quad]=(cnt[x.p.quad]||0)+1; });
+  html += '<div class="tiles">';
+  ['Double exigence','Analytique','Relationnel','Autonome'].forEach(function(qd){
+    html += '<div class="tile" style="cursor:default"><div class="k">'+quadPill(qd)+'</div><div class="v">'+(cnt[qd]||0)+' <small>hôtels</small></div><div class="s">'+esc(QUAD_INFO[qd].need)+'<br><b style="color:var(--text-2)">→ '+esc(QUAD_INFO[qd].rm)+'</b></div></div>';
+  });
+  html += '</div>';
+  html += '<div class="card"><div class="card-head"><input type="text" id="cFilter" placeholder="Rechercher un hôtel, une ville, un groupe, un RM…" value="'+esc(state.clientFilter)+'" style="min-width:260px;flex:1;max-width:420px"><span class="spacer"></span><span class="hint">Cliquez sur un hôtel pour ouvrir sa fiche</span></div>';
+  html += '<div class="tbl-wrap"><table><thead><tr>';
+  [['name','Hôtel',''],['','Y','c'],['','R','c'],['','T','c'],['score','Charge','num'],['','Niveau',''],['quad','Quadrant',''],['','Profil RM recommandé',''],['rm','RM actuel',''],['fit','Adéquation','num'],['','Meilleur choix',''],['hw','h (12 sem.)','num'],['tk','Tickets','num']].forEach(function(c){
+    var arrow = sk.key===c[0] ? (sk.dir>0?' ▲':' ▼') : '';
+    html += '<th class="'+(c[0]?'sortable ':'')+c[2]+'" '+(c[0]?'data-sort="'+c[0]+'"':'')+'>'+c[1]+arrow+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+  list.forEach(function(x){
+    var h = x.h;
+    html += '<tr class="clickable" data-open="'+esc(h.id)+'"><td style="min-width:190px"><span class="hname">'+esc(h.name)+'</span>'+(h.phase==='Onboarding'?' <span class="pill st-gold">Onboarding</span>':'')+'<div class="muted small">'+esc([h.city, h.rooms?h.rooms+' ch.':'', h.group].filter(Boolean).join(' · '))+'</div></td>'+
+      '<td class="c">'+sc(h.y)+'</td><td class="c">'+sc(h.r)+'</td><td class="c">'+sc(h.t)+'</td>'+
+      '<td class="num strong">'+nf1.format(x.p.score)+'</td><td>'+levelPill(x.p.level)+'</td><td>'+quadPill(x.p.quad)+'</td>'+
+      '<td class="small" style="min-width:200px">'+esc(recoProfile(h))+'</td>'+
+      '<td>'+esc(uname(h.rm))+'</td><td class="num"><span class="pill '+(x.curFit>=80?'st-good':x.curFit>=60?'st-warn':'st-crit')+'">'+(x.curFit!=null?x.curFit+' %':'–')+'</span></td>'+
+      '<td class="small">'+(x.best && x.best.u.id!==h.rm ? esc(x.best.u.name)+' <span class="muted">('+x.best.fit+' %)</span>' : '<span class="check">✓ actuel</span>')+'</td>'+
+      '<td class="num">'+(x.s.hours?hrs(x.s.hours):'–')+'</td><td class="num">'+(x.s.tickets||'–')+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+  var cf = $('cFilter'); cf.addEventListener('input', function(){ state.clientFilter = cf.value; var pos = cf.selectionStart; renderClients(); var n=$('cFilter'); n.focus(); n.setSelectionRange(pos,pos); });
+  el.querySelectorAll('th[data-sort]').forEach(function(th){ th.addEventListener('click', function(){ var k = th.getAttribute('data-sort'); var cur = state.sort.clients || {key:'score',dir:-1}; state.sort.clients = cur.key===k ? {key:k,dir:-cur.dir} : {key:k,dir:(k==='name'||k==='rm'||k==='quad')?1:-1}; renderClients(); }); });
+  el.querySelectorAll('tr[data-open]').forEach(function(tr){ tr.addEventListener('click', function(){ openHotel(tr.getAttribute('data-open')); }); });
+  $('expClients').addEventListener('click', function(){
+    var rows = [['Hôtel','Ville','Chambres','Groupe','Interlocuteur','Distribution','PMS','Phase','Yield','Relation','Technique','Score de charge','Niveau','Profil dominant','Quadrant','Profil RM recommandé','RM actuel','Adéquation RM actuel (%)','Meilleur RM','Adéquation meilleur (%)','Heures 12 sem.','Tickets 12 sem.','Signaux']];
+    list.forEach(function(x){ var h=x.h; rows.push([h.name,h.city,h.rooms||'',h.group,h.contact,h.distrib,h.pms,h.phase,h.y,h.r,h.t,x.p.score,x.p.level,x.p.dom,x.p.quad,recoProfile(h),uname(h.rm),x.curFit,x.best?x.best.u.name:'',x.best?x.best.fit:'',x.s.hours,x.s.tickets,h.notes]); });
+    exportCsv('lewys-profils-clients', rows);
+  });
+}
+
+/* ---------- Fiche hôtel (panneau) ---------- */
+function closeDrawer(){ var o=$('overlay'); if(o) o.innerHTML=''; document.body.style.overflow=''; }
+function openHotel(id){
+  var h = hotel(id); if(!h) return;
+  var p = profileOf(h);
+  var C12 = computeStats(lastWeeks(isoWeekKey(new Date()), 12));
+  var Cy = computeStats(weeksOfYear(state.year));
+  var s = C12.H[h.id], sy = Cy.H[h.id];
+  var reco = bestRMs(h);
+  var admin = isAdmin();
+  var html = '<div class="drawer-bg" id="dBg"></div><aside class="drawer" role="dialog" aria-label="Fiche '+esc(h.name)+'"><div class="drawer-head"><div style="flex:1"><div class="eyebrow" style="color:var(--gold-soft)">Fiche client</div><h3>'+esc(h.name)+'</h3><div class="muted small">'+esc([h.city, h.rooms?h.rooms+' chambres':'', h.group].filter(Boolean).join(' · '))+'</div></div><button class="btn-top no-print" onclick="window.print()">PDF</button><button class="btn-top" id="dClose" aria-label="Fermer">✕</button></div><div class="drawer-body">';
+
+  html += '<div class="card"><div class="card-head"><h3>Profil de charge</h3><span class="spacer"></span>'+levelPill(p.level)+' '+quadPill(p.quad)+'</div>';
+  [['Yield','y','var(--ax-y)'],['Relation client','r','var(--ax-r)'],['Technique & distrib.','t','var(--ax-t)']].forEach(function(a){
+    html += '<div class="axis-row"><span class="small strong">'+a[0]+'</span><div class="track"><span style="width:'+((+h[a[1]]||0)/5*100)+'%;background:'+a[2]+'"></span></div>'+(admin?'<input class="in" style="width:56px" type="number" min="1" max="5" step="0.5" data-ax="'+a[1]+'" value="'+(h[a[1]]!=null?h[a[1]]:'')+'" aria-label="Note '+a[0]+'">':'<span class="strong">'+h[a[1]]+'</span>')+'</div>';
+  });
+  html += '<p class="small" style="margin:10px 0 0">Score de charge <b>'+nf1.format(p.score)+'</b>'+(h.phase==='Onboarding'?' (majoré onboarding)':'')+' · profil dominant <b>'+p.dom+'</b>.</p>';
+  html += '<div class="callout" style="margin-top:10px"><b>Besoin :</b> '+esc(QUAD_INFO[p.quad].need)+'<br><b>Profil de RM recommandé :</b> '+esc(recoProfile(h))+'</div></div>';
+
+  html += '<div class="card"><div class="card-head"><h3>Revenue manager</h3><span class="spacer"></span><span class="hint">Actuel : <b>'+esc(uname(h.rm))+'</b>'+(h.proposed && h.proposed!==h.rm?' · proposé (matrice) : <b>'+esc(uname(h.proposed))+'</b>':'')+'</span></div>';
+  reco.forEach(function(x){
+    var cur = x.u.id===h.rm;
+    html += '<div class="fit"><span><b>'+esc(x.u.name)+'</b> <span class="muted small">'+esc(x.u.role)+' · Y'+x.u.skills.y+' R'+x.u.skills.r+' T'+x.u.skills.t+' · '+x.load.count+' hôtels, charge '+nf1.format(x.load.score)+'</span>'+(cur?' <span class="pill st-brand">Actuel</span>':'')+'</span>'+
+      '<div class="bar-h'+(x.fit<60?' over':'')+'"><span style="width:'+x.fit+'%"></span></div><span class="num strong">'+x.fit+' %</span></div>';
+  });
+  if(admin) html += '<div class="row" style="margin-top:12px"><label class="ctl">Attribuer à <select id="dRm">'+state.data.users.filter(function(u){return u.active;}).map(function(u){return '<option value="'+u.id+'"'+(u.id===h.rm?' selected':'')+'>'+esc(u.name)+'</option>';}).join('')+'</select></label><span class="saved"></span></div>';
+  html += '<p class="muted small" style="margin:8px 0 0">Adéquation = 100 % moins 22 points par point de compétence manquant sur un axe exigé (et un léger malus si le profil est très surdimensionné).</p></div>';
+
+  html += '<div class="card"><div class="card-head"><h3>Temps & demandes — 12 dernières semaines</h3><span class="spacer"></span><div class="legend"><span><i style="background:var(--brand)"></i>Heures</span><span><i style="background:var(--gold);border-radius:50%"></i>Tickets</span></div></div><div class="chart-box" id="dWeeks"><div class="tip"></div></div>';
+  html += '<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">'+tile('Heures (12 sem.)', hrs(s.hours), s.hours&&C12.n?hrs(s.hours/C12.n)+' / sem.':'')+tile('Tickets (12 sem.)', n0(s.tickets), s.hours?nf1.format(s.tickets/s.hours)+' / h':'')+(admin?tile('€ / heure', eur(s.eurH), 'taux horaire client','gold')+tile('Marge', eur(s.margin), pct(s.marginPct)):'')+'</div>';
+  var byU = Object.keys(s.byUser);
+  if(byU.length) html += '<p class="small" style="margin:10px 0 0">Temps passé par : '+byU.sort(function(a,b){return s.byUser[b]-s.byUser[a];}).map(function(u){return '<b>'+esc(uname(u))+'</b> '+hrs(s.byUser[u]);}).join(' · ')+'</p>';
+  if(s.notes.length) html += '<ul style="margin:10px 0 0;padding-left:18px" class="small">'+s.notes.slice().sort(function(a,b){return a.w<b.w?1:-1;}).slice(0,6).map(function(n){return '<li><span class="muted">'+weekLabel(n.w,true)+' · '+esc(uname(n.uid))+'</span> — '+esc(n.note)+'</li>';}).join('')+'</ul>';
+  html += '</div>';
+
+  if(admin){
+    html += '<div class="card"><div class="card-head"><h3>Contrat</h3><span class="spacer"></span>'+statusPill(sy.status)+'</div><dl class="kv">'+
+      '<dt>Honoraires fixes</dt><dd>'+(h.fixe?eur(h.fixe)+' HT / mois':'<span class="muted">non renseigné</span>')+'</dd>'+
+      '<dt>Variable</dt><dd>'+(h.varRate?nf1.format(h.varRate)+' % (estimé '+eur(h.varEstimate)+' / mois)':'—')+'</dd>'+
+      '<dt>Valeur mensuelle</dt><dd><b>'+eur(monthlyValue(h))+'</b></dd>'+
+      '<dt>Temps estimé (matrice)</dt><dd>'+(h.estHours?hrs(h.estHours)+' / mois → '+eur(monthlyValue(h)/h.estHours)+' / h estimé':'—')+'</dd>'+
+      '<dt>Réel '+state.year+'</dt><dd>'+hrs(sy.hours)+' · '+eur(sy.revenue)+' d’honoraires · '+eur(sy.eurH)+' / h · marge '+pct(sy.marginPct)+'</dd></dl></div>';
+  }
+  html += '<div class="card"><h3>Identité & écosystème</h3><dl class="kv" style="margin-top:10px">'+
+    '<dt>Interlocuteur</dt><dd>'+esc(h.contact||'—')+'</dd><dt>Groupe / client</dt><dd>'+esc(h.group||'—')+'</dd>'+
+    '<dt>Distribution / CM</dt><dd>'+esc(h.distrib||'—')+'</dd><dt>PMS</dt><dd>'+esc(h.pms||'—')+'</dd>'+
+    '<dt>Phase</dt><dd>'+esc(h.phase)+'</dd><dt>Signaux connus</dt><dd>'+(admin?'<textarea id="dNotes" rows="3" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:6px 8px">'+esc(h.notes||'')+'</textarea>':esc(h.notes||'—'))+'</dd></dl></div>';
+  html += '</div></aside>';
+  var o = $('overlay'); o.innerHTML = html; document.body.style.overflow='hidden';
+  $('dClose').addEventListener('click', function(){ closeDrawer(); render(); });
+  $('dBg').addEventListener('click', function(){ closeDrawer(); render(); });
+  drawWeekCombo($('dWeeks'), h.id, C12.weeks);
+  if(admin){
+    o.querySelectorAll('[data-ax]').forEach(function(inp){ inp.addEventListener('change', function(){ var v = num(inp.value); if(v==null||v<1||v>5) return; h[inp.getAttribute('data-ax')] = v; persist(true); openHotel(h.id); }); });
+    $('dRm').addEventListener('change', function(){ h.rm = this.value; persist(true); toast(h.name+' attribué à '+uname(h.rm)); openHotel(h.id); });
+    $('dNotes').addEventListener('input', function(){ h.notes = this.value; persist(); });
+  }
+}
+function drawWeekCombo(box, hid, weeks){
+  var data = weeks.map(function(w){ var hh=0, tk=0; Object.keys(state.data.entries).forEach(function(k){ var q=k.split('|'); if(q[0]===w && q[1]===hid){ var e=state.data.entries[k]; hh+=+e.h||0; tk+=+e.tk||0; } }); return {w:w,h:hh,tk:tk}; });
+  var W = Math.max(300, box.clientWidth||600), H = 190, m = {l:34,r:30,t:10,b:24}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  var maxH = niceMax(Math.max.apply(null, data.map(function(d){return d.h;}).concat([1]))*1.05);
+  var maxT = niceMax(Math.max.apply(null, data.map(function(d){return d.tk;}).concat([1]))*1.05);
+  var bw = iw/data.length, barW = Math.max(6, Math.min(26, bw-8));
+  var Y = function(v){ return m.t+ih-v/maxH*ih; }, YT = function(v){ return m.t+ih-v/maxT*ih; };
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Heures et tickets par semaine">';
+  for(var i=0;i<=4;i++){ var v=maxH*i/4; s += '<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="var(--grid)"/><text x="'+(m.l-6)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="10" fill="var(--text-3)">'+nf0.format(v)+' h</text><text x="'+(m.l+iw+6)+'" y="'+(YT(maxT*i/4)+4)+'" font-size="10" fill="var(--gold)">'+nf0.format(maxT*i/4)+'</text>'; }
+  var pts=[];
+  data.forEach(function(d,i){
+    var x = m.l+i*bw+(bw-barW)/2;
+    s += '<g class="wb" data-i="'+i+'"><rect x="'+(m.l+i*bw)+'" y="'+m.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'+(d.h>0?'<rect x="'+x+'" y="'+Y(d.h)+'" width="'+barW+'" height="'+(Y(0)-Y(d.h))+'" rx="3" fill="var(--brand)"/>':'')+'</g>';
+    if(i%2===0 || data.length<=8) s += '<text x="'+(m.l+i*bw+bw/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="var(--text-3)">'+weekLabel(d.w,true)+'</text>';
+    pts.push([m.l+i*bw+bw/2, YT(d.tk)]);
+  });
+  s += '<polyline points="'+pts.map(function(p){return p.join(',');}).join(' ')+'" fill="none" stroke="var(--gold)" stroke-width="2" pointer-events="none"/>';
+  pts.forEach(function(p){ s += '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3" fill="var(--gold)" stroke="var(--surface)" stroke-width="1.5" pointer-events="none"/>'; });
+  s += '</svg>';
+  var tip = box.querySelector('.tip'); box.innerHTML = s; box.appendChild(tip);
+  tipBind(box, 'g.wb', function(g){ var d = data[+g.getAttribute('data-i')]; return '<b>'+esc(weekLabel(d.w))+'</b><div class="l"><span>Heures</span><span>'+hrs(d.h)+'</span></div><div class="l"><span>Tickets</span><span>'+d.tk+'</span></div>'; });
+}
+
+/* =====================================================================
+   RENTABILITÉ
+   ===================================================================== */
+function periodSeg(){
+  var k = state.rentPeriod;
+  return '<div class="seg no-print" role="group" aria-label="Période"><button data-per="month" aria-pressed="'+(k==='month')+'">Mois</button><button data-per="12w" aria-pressed="'+(k==='12w')+'">12 semaines</button><button data-per="year" aria-pressed="'+(k==='year')+'">Année</button></div>';
+}
+function bindPeriodSeg(cb){
+  document.querySelectorAll('[data-per]').forEach(function(b){ b.addEventListener('click', function(){ state.rentPeriod = b.getAttribute('data-per'); cb(); }); });
+}
+function groupRows(C){
+  var g = {};
+  Object.keys(C.H).forEach(function(id){
+    var s = C.H[id]; if(s.h.status==='Inactif') return; var key = s.h.group || s.h.name;
+    if(!g[key]) g[key] = {id:'g:'+key, name:key, members:[], hours:0, tickets:0, cost:0, revenue:0, rms:{}, anyC:false};
+    var a = g[key]; a.members.push(s.h.name); a.hours+=s.hours; a.tickets+=s.tickets; a.cost+=s.cost; a.revenue+=s.revenue; a.rms[s.h.rm]=1; a.anyC = a.anyC || hasContract(s.h);
+  });
+  return Object.keys(g).map(function(k){ var a=g[k]; a.margin=a.revenue-a.cost; a.marginPct=a.revenue>0?a.margin/a.revenue:null; a.eurH=a.hours>0?a.revenue/a.hours:null;
+    a.status = !a.anyC ? {k:'none',label:'Contrat non renseigné'} : a.hours<=0 ? {k:'none',label:'Pas de temps saisi'} : a.marginPct<0 ? {k:'crit',label:'Déficitaire'} : a.marginPct<state.data.settings.marginTarget ? {k:'warn',label:'Sous la cible'} : {k:'good',label:'Rentable'};
+    return a; });
+}
+function renderRentab(){
+  var el = $('view');
+  var C = computeStats(periodWeeks(state.rentPeriod));
+  var byGroup = state.rentGroup === 'group';
+  var list = byGroup ? groupRows(C) : Object.keys(C.H).map(function(k){ var s=C.H[k]; s.name=s.h.name; return s; }).filter(function(s){return s.h.status!=='Inactif';});
+  var sk = state.sort.rentab || {key:'eurH', dir:-1};
+  list.sort(function(a,b){
+    if(sk.key==='name') return sk.dir*a.name.localeCompare(b.name,'fr');
+    if(sk.key==='status'){ var r={crit:0,warn:1,good:2,none:3}; return sk.dir*(r[a.status.k]-r[b.status.k]); }
+    var va=a[sk.key], vb=b[sk.key]; if(va==null) va=-Infinity; if(vb==null) vb=-Infinity; return sk.dir*(va-vb);
+  });
+  var T = C.T;
+  var html = pageHead('Rentabilité · '+esc(periodLabel(state.rentPeriod)), 'Rentabilité des contrats',
+    (state.rentPeriod==='month'?monthPicker():'')+' '+periodSeg()+' <button class="btn sm no-print" id="expRent">Exporter CSV</button> <button class="btn sm no-print" data-act="print">PDF</button>');
+  html += '<p class="sub">Honoraires de la période (au prorata des semaines saisies : '+C.n+') comparés au coût du temps passé (heures × coût horaire chargé de chaque RM). Le <b>taux horaire client</b> = honoraires ÷ heures : s’il passe sous le coût horaire de l’équipe, le contrat nous pénalise.</p>';
+  html += '<div class="tiles">'+tile('Honoraires', eur(T.revenue), C.n+' semaine'+(C.n>1?'s':'')+' saisie'+(C.n>1?'s':''))+tile('Heures', hrs(T.hours), n0(T.tickets)+' tickets')+tile('Taux horaire client', eur(T.eurH)+' <small>/h</small>', 'coût moyen '+eur(T.costH)+' / h','gold')+tile('Marge', eur(T.margin), pct(T.marginPct)+' · cible '+pct(state.data.settings.marginTarget))+tile('À traiter', T.crit+' <small>déficitaire'+(T.crit>1?'s':'')+'</small>', T.warn+' sous la cible', T.crit?'crit':'')+'</div>';
+
+  html += '<div class="card"><div class="card-head"><h3>Honoraires × temps passé</h3><span class="spacer"></span><div class="legend"><span><i style="background:var(--good);border-radius:50%"></i>Rentable</span><span><i style="background:var(--warn);border-radius:50%"></i>Sous la cible</span><span><i style="background:var(--crit);border-radius:50%"></i>Déficitaire</span><span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--crit)" stroke-width="2" stroke-dasharray="5 3"/></svg> Seuil (coût du temps)</span><span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--good)" stroke-width="2" stroke-dasharray="1 3" stroke-linecap="round"/></svg> Marge cible</span></div></div><div class="chart-box" id="scatter"><div class="tip"></div></div><p class="muted small" style="margin:6px 0 0">Au-dessus de la ligne rouge, le contrat paie le temps passé ; au-dessus de la ligne verte, il atteint la marge cible. Cliquez sur un point pour ouvrir la fiche.</p></div>';
+
+  html += '<div class="card"><div class="card-head"><h3>Détail</h3><div class="seg no-print" role="group"><button data-grp="hotel" aria-pressed="'+(!byGroup)+'">Par hôtel</button><button data-grp="group" aria-pressed="'+byGroup+'">Par client / groupe</button></div><span class="spacer"></span><span class="hint">Cliquez sur un en-tête pour trier</span></div><div class="tbl-wrap"><table><thead><tr>';
+  [['name',byGroup?'Client / groupe':'Hôtel',''],['','RM',''],['hours','Heures','num'],['tickets','Tickets','num'],['revenue','Honoraires','num'],['cost','Coût du temps','num'],['margin','Marge','num'],['marginPct','Marge %','num'],['eurH','€ / h','num'],['status','Statut','']].forEach(function(c){
+    var arrow = sk.key===c[0] ? (sk.dir>0?' ▲':' ▼') : '';
+    html += '<th class="'+(c[0]?'sortable ':'')+c[2]+'" '+(c[0]?'data-sort="'+c[0]+'"':'')+'>'+c[1]+arrow+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+  list.forEach(function(s){
+    var rm = byGroup ? Object.keys(s.rms).map(uname).join(', ') : uname(s.h.rm);
+    html += '<tr'+(byGroup?'':' class="clickable" data-open="'+esc(s.id)+'"')+'><td><span class="hname">'+esc(s.name)+'</span><div class="muted small">'+esc(byGroup ? s.members.length+' établissement'+(s.members.length>1?'s':'') : (s.h.city||''))+'</div></td><td class="small">'+esc(rm)+'</td>'+
+      '<td class="num">'+(s.hours?hrs(s.hours):'–')+'</td><td class="num">'+(s.tickets||'–')+'</td><td class="num">'+(s.revenue?eur(s.revenue):'–')+'</td><td class="num">'+(s.cost?eur(s.cost):'–')+'</td>'+
+      '<td class="num strong" style="color:'+(s.margin<0?'var(--crit-ink)':'inherit')+'">'+(s.revenue||s.cost?eur(s.margin):'–')+'</td><td class="num">'+pct(s.marginPct)+'</td><td class="num strong">'+eur(s.eurH)+'</td><td>'+statusPill(s.status)+'</td></tr>';
+  });
+  html += '</tbody><tfoot><tr><td>Total</td><td></td><td class="num">'+hrs(T.hours)+'</td><td class="num">'+n0(T.tickets)+'</td><td class="num">'+eur(T.revenue)+'</td><td class="num">'+eur(T.cost)+'</td><td class="num">'+eur(T.margin)+'</td><td class="num">'+pct(T.marginPct)+'</td><td class="num">'+eur(T.eurH)+'</td><td></td></tr></tfoot></table></div></div>';
+  el.innerHTML = html;
+  if(state.rentPeriod==='month') bindMonthPicker(renderRentab);
+  bindPeriodSeg(renderRentab);
+  el.querySelectorAll('[data-grp]').forEach(function(b){ b.addEventListener('click', function(){ state.rentGroup = b.getAttribute('data-grp'); renderRentab(); }); });
+  el.querySelectorAll('th[data-sort]').forEach(function(th){ th.addEventListener('click', function(){ var k = th.getAttribute('data-sort'); var cur = state.sort.rentab || {key:'eurH',dir:-1}; state.sort.rentab = cur.key===k ? {key:k,dir:-cur.dir} : {key:k,dir:k==='name'?1:-1}; renderRentab(); }); });
+  el.querySelectorAll('tr[data-open]').forEach(function(tr){ tr.addEventListener('click', function(){ openHotel(tr.getAttribute('data-open')); }); });
+  $('expRent').addEventListener('click', function(){
+    var rows = [[byGroup?'Client / groupe':'Hôtel','RM','Heures','Tickets','Honoraires (€)','Coût du temps (€)','Marge (€)','Marge %','€ / h','Statut']];
+    list.forEach(function(s){ rows.push([s.name, byGroup?Object.keys(s.rms).map(uname).join(', '):uname(s.h.rm), s.hours, s.tickets, s.revenue, s.cost, s.margin, s.marginPct!=null?Math.round(s.marginPct*100):'', s.eurH!=null?s.eurH:'', s.status.label]); });
+    exportCsv('lewys-rentabilite-'+state.rentPeriod, rows);
+  });
+  drawScatter($('scatter'), list.filter(function(s){return s.hours>0 || s.revenue>0;}), T.costH);
+}
+function drawScatter(box, pts, costH){
+  if(!box) return;
+  var W = Math.max(320, box.clientWidth||640), H = Math.round(Math.min(400, Math.max(280, W*0.5))), m = {l:62,r:16,t:12,b:40}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  if(!pts.length){ box.innerHTML = '<div class="empty">Aucune donnée sur la période.</div>'; return; }
+  var xMax = niceMax(Math.max.apply(null, pts.map(function(s){return s.hours;}).concat([1]))*1.08);
+  var yMax = niceMax(Math.max.apply(null, pts.map(function(s){return s.revenue;}).concat([100]))*1.08);
+  var X = function(v){return m.l+v/xMax*iw;}, Y = function(v){return m.t+ih-v/yMax*ih;};
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Honoraires en fonction des heures passées"><defs><clipPath id="sc"><rect x="'+m.l+'" y="'+m.t+'" width="'+iw+'" height="'+ih+'"/></clipPath></defs>';
+  for(var i=0;i<=4;i++){ var yv=yMax*i/4, xv=xMax*i/4; s += '<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(yv)+'" y2="'+Y(yv)+'" stroke="var(--grid)"/><text x="'+(m.l-8)+'" y="'+(Y(yv)+4)+'" text-anchor="end" font-size="10.5" fill="var(--text-3)">'+eurk(yv)+'</text><text x="'+X(xv)+'" y="'+(m.t+ih+16)+'" text-anchor="middle" font-size="10.5" fill="var(--text-3)">'+nf0.format(xv)+' h</text>'; }
+  s += '<text x="'+(m.l+iw/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="11" fill="var(--text-2)">Heures passées sur la période</text><g clip-path="url(#sc)">';
+  var cost = costH || 0; var tg = state.data.settings.marginTarget;
+  if(cost>0){ s += '<line x1="'+X(0)+'" y1="'+Y(0)+'" x2="'+X(xMax)+'" y2="'+Y(cost*xMax)+'" stroke="var(--crit)" stroke-width="2" stroke-dasharray="6 4"/>'; if(tg<1){ var ct = cost/(1-tg); s += '<line x1="'+X(0)+'" y1="'+Y(0)+'" x2="'+X(xMax)+'" y2="'+Y(ct*xMax)+'" stroke="var(--good)" stroke-width="2" stroke-dasharray="1 4" stroke-linecap="round"/>'; } }
+  s += '</g>';
+  var col = {good:'var(--good)',warn:'var(--warn)',crit:'var(--crit)',none:'var(--none)'};
+  var labeled = {}; pts.filter(function(p){return p.status.k==='crit';}).forEach(function(p){labeled[p.id]=1;}); pts.slice().sort(function(a,b){return b.revenue-a.revenue;}).slice(0,3).forEach(function(p){labeled[p.id]=1;});
+  var labels='';
+  pts.forEach(function(p,idx){
+    var cx = X(p.hours), cy = Y(p.revenue);
+    s += '<g class="pt" data-i="'+idx+'" tabindex="0" style="cursor:pointer"><circle cx="'+cx+'" cy="'+cy+'" r="12" fill="transparent"/><circle cx="'+cx+'" cy="'+cy+'" r="6" fill="'+col[p.status.k]+'" stroke="var(--surface)" stroke-width="2"/></g>';
+    if(labeled[p.id] && W>=520){ var anc = cx > m.l+iw*0.72 ? 'end':'start'; labels += '<text x="'+(cx+(anc==='end'?-10:10))+'" y="'+(cy+4)+'" text-anchor="'+anc+'" font-size="11" fill="var(--text-2)" paint-order="stroke" stroke="var(--surface)" stroke-width="3" pointer-events="none">'+esc(String(p.name).replace(/^(Hôtel|Le|La|Les)\s+/i,'').slice(0,22))+'</text>'; }
+  });
+  s += labels + '</svg>';
+  var tip = box.querySelector('.tip'); box.innerHTML = s; box.appendChild(tip);
+  tipBind(box, 'g.pt', function(g){ var p = pts[+g.getAttribute('data-i')]; return '<b>'+esc(p.name)+'</b>'+statusPill(p.status)+'<div class="l" style="margin-top:6px"><span>Heures</span><span>'+hrs(p.hours)+'</span></div><div class="l"><span>Honoraires</span><span>'+eur(p.revenue)+'</span></div><div class="l"><span>Coût du temps</span><span>'+eur(p.cost)+'</span></div><div class="l"><span>Marge</span><span>'+eur(p.margin)+' ('+pct(p.marginPct)+')</span></div><div class="l"><span>€ / h</span><span>'+eur(p.eurH)+'</span></div>'; });
+  box.querySelectorAll('g.pt').forEach(function(g){ g.addEventListener('click', function(){ var p = pts[+g.getAttribute('data-i')]; if(p.h) openHotel(p.h.id); }); });
+}
+
+/* =====================================================================
+   ÉQUIPE
+   ===================================================================== */
+function renderEquipe(){
+  var el = $('view');
+  var C = computeStats(periodWeeks(state.rentPeriod));
+  var users = state.data.users.filter(function(u){return u.active;});
+  var html = pageHead('Équipe · '+esc(periodLabel(state.rentPeriod)), 'Charge & taux horaire des revenue managers', (state.rentPeriod==='month'?monthPicker():'')+' '+periodSeg()+' <button class="btn sm no-print" id="expTeam">Exporter CSV</button> <button class="btn sm no-print" data-act="print">PDF</button>');
+  html += '<p class="sub"><b>Valeur produite / h</b> = honoraires générés par les heures de la personne (heures × taux horaire de chaque hôtel travaillé). À comparer à son <b>coût horaire chargé</b> : l’écart est la marge qu’elle dégage par heure. Taux de charge = heures saisies ÷ capacité suivi client.</p>';
+  html += '<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Personne</th><th class="num">Hôtels</th><th class="num">Charge portefeuille</th><th class="num">Heures</th><th>Taux de charge</th><th class="num">Tickets</th><th class="num">Valeur produite</th><th class="num">Valeur / h</th><th class="num">Coût / h</th><th class="num">Marge dégagée</th></tr></thead><tbody>';
+  var rows = [];
+  users.forEach(function(u){
+    var a = C.U[u.id], L = rmLoad(u.id); var cap = (u.capacity||0)*C.n; var load = cap ? a.hours/cap : null;
+    rows.push([u.name,u.role,L.count,L.score,a.hours,load!=null?Math.round(load*100):'',a.tickets,a.value,a.eurH!=null?a.eurH:'',u.cost,a.margin]);
+    html += '<tr><td><span class="hname">'+esc(u.name)+'</span><div class="muted small">'+esc(u.role)+(u.isAdmin?' · admin':'')+'</div></td><td class="num">'+L.count+'</td><td class="num">'+nf1.format(L.score)+'</td><td class="num">'+(a.hours?hrs(a.hours):'–')+'</td>'+
+      '<td style="min-width:130px"><div class="row" style="gap:8px;flex-wrap:nowrap"><div class="bar-h'+(load>1?' over':'')+'" style="flex:1"><span style="width:'+Math.min(100,(load||0)*100)+'%"></span></div><span class="small" style="min-width:36px;text-align:right">'+pct(load)+'</span></div></td>'+
+      '<td class="num">'+(a.tickets||'–')+'</td><td class="num">'+(a.value?eur(a.value):'–')+'</td><td class="num strong" style="color:'+(a.eurH!=null&&a.eurH<u.cost?'var(--crit-ink)':'var(--good-ink)')+'">'+eur(a.eurH)+'</td><td class="num muted">'+eur(u.cost)+'</td><td class="num strong">'+(a.hours?eur(a.margin):'–')+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Suivi des saisies
+  var wks = lastWeeks(isoWeekKey(new Date()), 8);
+  html += '<div class="card"><div class="card-head"><h3>Suivi des saisies hebdomadaires</h3><span class="spacer"></span><div class="legend"><span><span class="pill st-good">✓</span> validée</span><span><span class="pill st-warn">…</span> en cours</span><span><span class="pill st-none">–</span> non saisie</span></div></div><div class="tbl-wrap"><table><thead><tr><th>Personne</th>'+wks.map(function(w){return '<th class="c">'+weekLabel(w,true)+'</th>';}).join('')+'</tr></thead><tbody>';
+  users.filter(function(u){ return activeHotels().some(function(h){return h.rm===u.id;}); }).forEach(function(u){
+    html += '<tr><td class="hname">'+esc(u.name)+'</td>';
+    wks.forEach(function(w){
+      var sub = state.data.submissions[u.id+'|'+w]; var hh=0, tk=0;
+      Object.keys(state.data.entries).forEach(function(k){ var q=k.split('|'); if(q[0]===w && q[2]===u.id){ hh+=+state.data.entries[k].h||0; tk+=+state.data.entries[k].tk||0; } });
+      html += '<td class="c"><span class="pill '+(sub?'st-good':hh?'st-warn':'st-none')+'" title="'+hrs(hh)+' · '+tk+' tickets">'+(hh?nf0.format(hh)+' h':'–')+'</span></td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Portefeuilles
+  html += '<div class="card"><h3>Portefeuille de chacun</h3><div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Personne</th><th>Compétences</th><th>Hôtels attribués (adéquation)</th></tr></thead><tbody>';
+  users.forEach(function(u){
+    var mine = activeHotels().filter(function(h){return h.rm===u.id;});
+    html += '<tr><td class="hname" style="width:130px">'+esc(u.name)+'</td><td class="small" style="white-space:nowrap">Yield '+sc(u.skills.y)+' Relation '+sc(u.skills.r)+' Tech. '+sc(u.skills.t)+'</td><td class="small">'+(mine.length?mine.map(function(h){var f=fitScore(h,u); return '<a href="#" data-act="open-hotel" data-id="'+esc(h.id)+'" style="color:'+(f<60?'var(--crit-ink)':'var(--text)')+';text-decoration:none">'+esc(h.name)+' <span class="muted">('+f+' %)</span></a>';}).join(' · '):'<span class="muted">Aucun hôtel</span>')+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+  if(state.rentPeriod==='month') bindMonthPicker(renderEquipe);
+  bindPeriodSeg(renderEquipe);
+  $('expTeam').addEventListener('click', function(){ exportCsv('lewys-equipe-'+state.rentPeriod, [['Personne','Rôle','Nb hôtels','Charge portefeuille','Heures','Taux de charge %','Tickets','Valeur produite (€)','Valeur / h (€)','Coût / h (€)','Marge dégagée (€)']].concat(rows)); });
+}
+
+/* =====================================================================
+   ATTRIBUTIONS & CONTRATS
+   ===================================================================== */
+var PHASES = ['Onboarding','Run'];
+var STATUSES = ['Actif','Inactif'];
+function renderContrats(){
+  var el = $('view');
+  var H = state.data.hotels;
+  var users = state.data.users.filter(function(u){return u.active;});
+  var opts = function(sel){ return '<option value="">—</option>'+users.map(function(u){return '<option value="'+u.id+'"'+(u.id===sel?' selected':'')+'>'+esc(u.name)+'</option>';}).join(''); };
+  var html = pageHead('Administration', 'Attributions & contrats', '<button class="btn sm no-print" id="expContr">Exporter CSV</button> <button class="btn sm primary no-print" id="addHotel">+ Ajouter un hôtel</button>');
+  html += '<p class="sub">Assignez chaque hôtel à un revenue manager et renseignez les honoraires mensuels HT (fixe + variable estimé). Les notes Y / R / T alimentent le profil client. Toutes les modifications sont enregistrées automatiquement.</p>';
+
+  // Réattributions proposées (matrice)
+  var props = H.filter(function(h){ return h.status!=='Inactif' && h.proposed && h.proposed !== h.rm; });
+  if(props.length){
+    html += '<div class="card"><div class="card-head"><h3>Réattributions proposées dans la matrice ('+props.length+')</h3><span class="spacer"></span><button class="btn sm gold" id="applyAll">Tout appliquer</button></div><div class="tbl-wrap"><table><thead><tr><th>Hôtel</th><th>Quadrant</th><th>Actuel</th><th class="num">Adéq.</th><th>Proposé</th><th class="num">Adéq.</th><th></th></tr></thead><tbody>';
+    props.forEach(function(h){ var a=user(h.rm), b=user(h.proposed); var p = profileOf(h);
+      html += '<tr><td>'+hotelLink(h)+'</td><td>'+quadPill(p.quad)+'</td><td>'+esc(uname(h.rm))+'</td><td class="num">'+(a?fitScore(h,a)+' %':'–')+'</td><td class="strong">'+esc(uname(h.proposed))+'</td><td class="num">'+(b?fitScore(h,b)+' %':'–')+'</td><td><button class="btn sm" data-apply="'+esc(h.id)+'">Appliquer</button> <button class="btn sm ghost" data-ignore="'+esc(h.id)+'">Ignorer</button></td></tr>'; });
+    html += '</tbody></table></div></div>';
+  }
+
+  html += '<div class="card"><div class="card-head"><h3>Portefeuille ('+H.length+' hôtels)</h3><span class="spacer"></span><span class="saved"></span></div><div class="tbl-wrap"><table><thead><tr><th>Hôtel</th><th>Client / groupe</th><th>RM attribué</th><th class="c">Y</th><th class="c">R</th><th class="c">T</th><th>Phase</th><th>Statut</th><th class="num">Fixe € HT/mois</th><th class="num">Variable %</th><th class="num">Var. estimé €/mois</th><th class="num">h/mois estimées</th><th class="num">Valeur /mois</th><th></th></tr></thead><tbody>';
+  H.forEach(function(h){
+    var u = user(h.rm); var f = u ? fitScore(h,u) : null;
+    html += '<tr data-h="'+esc(h.id)+'"'+(h.status==='Inactif'?' style="opacity:.55"':'')+'>'+
+      '<td><input class="in txt" data-f="name" value="'+esc(h.name)+'" style="min-width:170px" aria-label="Nom"><div class="row" style="gap:6px;margin-top:4px;flex-wrap:nowrap"><input class="in txt small" data-f="city" value="'+esc(h.city||'')+'" placeholder="Ville" style="min-width:90px;width:120px"><input class="in small" data-f="rooms" type="number" min="0" value="'+(h.rooms||'')+'" placeholder="Ch." style="width:58px" aria-label="Chambres"></div></td>'+
+      '<td><input class="in txt" data-f="group" value="'+esc(h.group||'')+'" style="min-width:130px" aria-label="Groupe"><input class="in txt small" data-f="contact" value="'+esc(h.contact||'')+'" placeholder="Interlocuteur" style="margin-top:4px" aria-label="Interlocuteur"></td>'+
+      '<td><select class="in" data-f="rm" aria-label="RM">'+opts(h.rm)+'</select>'+(f!=null?'<div class="small" style="margin-top:3px;color:'+(f<60?'var(--crit-ink)':f<80?'var(--warn-ink)':'var(--good-ink)')+'">adéquation '+f+' %</div>':'')+'</td>'+
+      ['y','r','t'].map(function(a){ return '<td class="c"><input class="in" style="width:52px" type="number" min="1" max="5" step="0.5" data-f="'+a+'" value="'+(h[a]!=null?h[a]:'')+'" aria-label="'+a+'"></td>'; }).join('')+
+      '<td><select class="in" data-f="phase">'+PHASES.map(function(s){return '<option'+(h.phase===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+      '<td><select class="in" data-f="status">'+STATUSES.map(function(s){return '<option'+(h.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
+      '<td class="num"><input class="in wide" type="number" min="0" step="10" data-f="fixe" value="'+(h.fixe!=null?h.fixe:'')+'" aria-label="Fixe"></td>'+
+      '<td class="num"><input class="in" type="number" min="0" step="0.1" data-f="varRate" value="'+(h.varRate!=null?h.varRate:'')+'" aria-label="Variable %"></td>'+
+      '<td class="num"><input class="in wide" type="number" min="0" step="10" data-f="varEstimate" value="'+(h.varEstimate!=null?h.varEstimate:'')+'" aria-label="Variable estimé"></td>'+
+      '<td class="num"><input class="in" type="number" min="0" step="0.5" data-f="estHours" value="'+(h.estHours!=null?h.estHours:'')+'" aria-label="Heures estimées"></td>'+
+      '<td class="num strong" data-val>'+(hasContract(h)?eur(monthlyValue(h)):'<span class="muted">–</span>')+'</td>'+
+      '<td style="white-space:nowrap"><button class="btn sm ghost" data-act="open-hotel" data-id="'+esc(h.id)+'" title="Fiche">Fiche</button><button class="btn sm ghost" data-del="'+esc(h.id)+'" title="Supprimer">'+(state.confirmArmed==='del:'+h.id?'Confirmer ?':'✕')+'</button></td></tr>';
+  });
+  var tot = activeHotels().reduce(function(a,h){return a+monthlyValue(h);},0);
+  html += '</tbody><tfoot><tr><td colspan="12">Total honoraires mensuels (hôtels actifs)</td><td class="num">'+eur(tot)+'</td><td></td></tr></tfoot></table></div>';
+  html += '<p class="muted small" style="margin:8px 0 0">Pour un contrat global (ex. Immovation), répartissez le fixe entre les établissements et utilisez la vue « Par client / groupe » de l’onglet Rentabilité. Passer un hôtel en « Inactif » le retire des calculs sans perdre son historique.</p></div>';
+  el.innerHTML = html;
+
+  el.querySelectorAll('tr[data-h] [data-f]').forEach(function(inp){
+    var ev = inp.tagName==='SELECT' ? 'change' : 'input';
+    inp.addEventListener(ev, function(){
+      var h = hotel(inp.closest('tr').getAttribute('data-h')); var f = inp.getAttribute('data-f');
+      if(['fixe','varRate','varEstimate','rooms','estHours','y','r','t'].indexOf(f)>=0){ var v = num(inp.value); if(['y','r','t'].indexOf(f)>=0 && v!=null) v = Math.max(1,Math.min(5,v)); h[f] = v!=null && v>=0 ? v : null; }
+      else h[f] = inp.value;
+      var cell = inp.closest('tr').querySelector('[data-val]'); cell.innerHTML = hasContract(h) ? eur(monthlyValue(h)) : '<span class="muted">–</span>';
+      persist();
+      if(ev==='change') renderContrats();
+    });
+  });
+  el.querySelectorAll('[data-apply]').forEach(function(b){ b.addEventListener('click', function(){ var h=hotel(b.getAttribute('data-apply')); h.rm=h.proposed; persist(true); toast(h.name+' → '+uname(h.rm)); renderContrats(); }); });
+  el.querySelectorAll('[data-ignore]').forEach(function(b){ b.addEventListener('click', function(){ var h=hotel(b.getAttribute('data-ignore')); h.proposed=h.rm; persist(true); renderContrats(); }); });
+  var aa = $('applyAll'); if(aa) aa.addEventListener('click', function(){ props.forEach(function(h){ h.rm = h.proposed; }); persist(true); toast(props.length+' réattributions appliquées'); renderContrats(); });
+  el.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click', function(){
+    var id = b.getAttribute('data-del');
+    if(state.confirmArmed !== 'del:'+id){ state.confirmArmed = 'del:'+id; renderContrats(); return; }
+    state.confirmArmed = null;
+    state.data.hotels = state.data.hotels.filter(function(h){return h.id!==id;});
+    Object.keys(state.data.entries).forEach(function(k){ if(k.split('|')[1]===id) delete state.data.entries[k]; });
+    persist(true); renderContrats();
+  }); });
+  $('addHotel').addEventListener('click', function(){
+    var id = 'h' + Date.now().toString(36);
+    state.data.hotels.unshift({id:id,name:'Nouvel hôtel',city:'',rooms:null,contact:'',group:'',distrib:'',pms:'',rm:'',proposed:'',phase:'Onboarding',status:'Actif',y:3,r:3,t:3,estHours:null,fixe:null,varRate:null,varEstimate:null,notes:''});
+    persist(true); renderContrats();
+    var inp = document.querySelector('tr[data-h="'+id+'"] input[data-f=name]'); if(inp){ inp.focus(); inp.select(); }
+  });
+  $('expContr').addEventListener('click', function(){
+    var rows = [['Hôtel','Ville','Chambres','Groupe','Interlocuteur','RM attribué','Adéquation %','Yield','Relation','Technique','Phase','Statut','Fixe €/mois','Variable %','Variable estimé €/mois','Valeur €/mois','h/mois estimées','€/h estimé']];
+    H.forEach(function(h){ var u=user(h.rm); rows.push([h.name,h.city,h.rooms||'',h.group,h.contact,uname(h.rm),u?fitScore(h,u):'',h.y,h.r,h.t,h.phase,h.status,h.fixe||'',h.varRate||'',h.varEstimate||'',monthlyValue(h),h.estHours||'',h.estHours&&monthlyValue(h)?monthlyValue(h)/h.estHours:'']); });
+    exportCsv('lewys-contrats', rows);
+  });
+}
+
+/* =====================================================================
+   SAISIE HEBDOMADAIRE (heures + tickets par hôtel)
+   ===================================================================== */
+var sessionExtra = {};
+function renderSaisie(){
+  var el = $('view');
+  var me = isAdmin() ? (state.entryFor || state.me.id) : state.me.id;
+  var w = state.week; var cur = isoWeekKey(new Date());
+  var mine = activeHotels().filter(function(h){ return h.rm === me; });
+  var extraIds = {};
+  activeHotels().forEach(function(h){ if(h.rm !== me && state.data.entries[entryKey(w,h.id,me)]) extraIds[h.id]=true; });
+  Object.keys(sessionExtra).forEach(function(k){ var q=k.split('|'); if(q[0]===w && q[1]===me) extraIds[q[2]]=true; });
+  var rows = mine.concat(activeHotels().filter(function(h){ return extraIds[h.id]; }));
+  var submitted = state.data.submissions[me+'|'+w];
+  var locked = !!submitted;
+  var others = activeHotels().filter(function(h){ return !rows.some(function(r){return r.id===h.id;}); }).sort(function(a,b){return a.name.localeCompare(b.name,'fr');});
+  var prevWeek = addWeeks(w,-1);
+  var hasPrev = Object.keys(state.data.entries).some(function(k){ var q=k.split('|'); return q[0]===prevWeek && q[2]===me; });
+  var u = user(me);
+
+  var right = '<div class="row no-print">'+(isAdmin()?'<label class="ctl">Saisie de <select id="entryFor">'+state.data.users.filter(function(x){return x.active;}).map(function(x){return '<option value="'+x.id+'"'+(x.id===me?' selected':'')+'>'+esc(x.name)+'</option>';}).join('')+'</select></label>':'')+
+    '<button class="btn sm" id="wkPrev" aria-label="Semaine précédente">‹</button><span class="strong" style="min-width:150px;text-align:center">'+esc(weekLabel(w))+'</span><button class="btn sm" id="wkNext" aria-label="Semaine suivante" '+(w>=cur?'disabled':'')+'>›</button>'+(w!==cur?'<button class="btn sm ghost" id="wkNow">Cette semaine</button>':'')+'</div>';
+  var html = pageHead('Saisie hebdomadaire'+(me!==state.me.id?' · pour '+esc(uname(me)):''), (me===state.me.id?'Mes heures & demandes':'Heures & demandes de '+esc(uname(me))), right);
+  if(document.documentElement.classList.contains('in-hub')) html += '<p class="sub"><b>Vos heures remontent automatiquement</b> de la saisie quotidienne faite sur l’accueil du Hub (cases vertes). Il vous reste à indiquer ici le <b>nombre de demandes / tickets</b> traités et, si besoin, un commentaire, puis à cliquer sur « Valider ma semaine » le vendredi.</p>'; else
+  html += '<p class="sub">À remplir en fin de semaine (le vendredi) : pour chaque hôtel de votre portefeuille, le <b>temps passé</b> (au quart d’heure, ex. 1,5) et le <b>nombre de demandes / tickets</b> traités (mails, appels, demandes du client, incidents). Hôtel non travaillé : laissez vide. Puis cliquez sur « Valider ma semaine ».</p>';
+  html += '<div class="card"><div class="card-head"><h3>'+esc(weekLabel(w))+'</h3>'+(locked?'<span class="pill st-good">✓ Validée le '+new Date(submitted).toLocaleDateString('fr-FR')+'</span>':'')+'<span class="spacer"></span><span class="saved"></span></div>';
+  if(!rows.length){
+    html += '<div class="empty">Aucun hôtel n’est attribué à '+esc(uname(me))+'. Ajoutez un hôtel ponctuel ci-dessous'+(isAdmin()?' ou attribuez des hôtels dans « Attributions & contrats »':'')+'.</div>';
+  } else {
+    html += '<div class="tbl-wrap"><table><thead><tr><th>Hôtel</th><th class="num">Heures</th><th class="num">Demandes / tickets</th><th>Commentaire (optionnel)</th></tr></thead><tbody>';
+    rows.forEach(function(h){
+      var e = state.data.entries[entryKey(w,h.id,me)] || {};
+      var extra = h.rm !== me;
+      html += '<tr data-h="'+esc(h.id)+'"><td><span class="hname">'+esc(h.name)+'</span>'+(extra?' <span class="tag">ponctuel · RM '+esc(uname(h.rm))+'</span>':'')+(h.phase==='Onboarding'?' <span class="pill st-gold">Onboarding</span>':'')+'<div class="muted small">'+esc(h.city||'')+'</div></td>'+
+        '<td class="num"><input class="in" type="number" min="0" max="80" step="0.25" inputmode="decimal" data-f="h" value="'+(e.h?e.h:'')+'" '+(locked?'disabled':(e.src==='hub'?'readonly title="Heures issues de la saisie quotidienne du Hub"':''))+' aria-label="Heures '+esc(h.name)+'">'+(e.src==='hub'?'<div class="hubsrc">saisie du Hub</div>':'')+'</td>'+
+        '<td class="num"><input class="in" type="number" min="0" max="500" step="1" inputmode="numeric" data-f="tk" value="'+(e.tk?e.tk:'')+'" '+(locked?'disabled':'')+' aria-label="Tickets '+esc(h.name)+'"></td>'+
+        '<td><input class="in txt" type="text" data-f="note" maxlength="200" value="'+esc(e.note||'')+'" '+(locked?'disabled':'')+' placeholder="ex. refonte grille 2027, incident synchro…"></td></tr>';
+    });
+    html += '</tbody><tfoot><tr><td>Total semaine</td><td class="num" id="sumH"></td><td class="num" id="sumT"></td><td class="muted small" id="sumCap"></td></tr></tfoot></table></div>';
+  }
+  html += '<div class="row no-print" style="margin-top:14px">';
+  if(!locked){
+    html += '<select id="addExtra"><option value="">+ Temps ponctuel sur un autre hôtel…</option>'+others.map(function(h){return '<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>';}).join('')+'</select>';
+    html += '<button class="btn" id="copyPrev" '+(hasPrev?'':'disabled')+'>Copier la semaine précédente</button>';
+  }
+  html += '<span class="spacer"></span>';
+  html += locked ? '<button class="btn" id="unsubmit">Rouvrir pour corriger</button>' : '<button class="btn primary" id="submitWeek">Valider ma semaine</button>';
+  html += '</div></div>';
+
+  // Historique récent
+  var hist = lastWeeks(w, 6);
+  html += '<div class="card"><div class="card-head"><h3>6 dernières semaines</h3><span class="spacer"></span>'+(isAdmin()?'':'<button class="btn sm ghost" data-act="goto" data-tab="histo">Historique complet →</button>')+'</div><div class="tbl-wrap"><table><thead><tr><th>Semaine</th><th class="num">Heures</th><th class="num">Tickets</th><th>Statut</th></tr></thead><tbody>';
+  hist.slice().reverse().forEach(function(wk){
+    var t=0, tk=0; Object.keys(state.data.entries).forEach(function(k){ var q=k.split('|'); if(q[0]===wk && q[2]===me){ t+=+state.data.entries[k].h||0; tk+=+state.data.entries[k].tk||0; } });
+    var sub = state.data.submissions[me+'|'+wk];
+    html += '<tr class="clickable" data-wk="'+wk+'"><td>'+esc(weekLabel(wk))+'</td><td class="num">'+(t?hrs(t):'–')+'</td><td class="num">'+(tk||'–')+'</td><td>'+(sub?'<span class="pill st-good">✓ validée</span>':(t?'<span class="pill st-warn">en cours</span>':'<span class="pill st-none">non saisie</span>'))+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+  updateTotals(me, w, u);
+
+  el.querySelectorAll('tr[data-h] input').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      var tr = inp.closest('tr'); var hid = tr.getAttribute('data-h'); var k = entryKey(w, hid, me);
+      var e = state.data.entries[k] || {h:0,tk:0,note:''}; var f = inp.getAttribute('data-f');
+      if(f==='note') e.note = inp.value.trim();
+      else { var v = num(inp.value); e[f] = v && v>0 ? (f==='tk' ? Math.min(Math.round(v),500) : Math.min(v,80)) : 0; }
+      e.ts = new Date().toISOString(); e.by = state.me.id;
+      if(!e.h && !e.tk && !e.note) delete state.data.entries[k]; else state.data.entries[k] = e;
+      updateTotals(me, w, u); persist();
+    });
+  });
+  el.querySelectorAll('tr[data-wk]').forEach(function(tr){ tr.addEventListener('click', function(){ state.week = tr.getAttribute('data-wk'); renderSaisie(); window.scrollTo(0,0); }); });
+  var ef = $('entryFor'); if(ef) ef.addEventListener('change', function(){ state.entryFor = ef.value; renderSaisie(); });
+  $('wkPrev').addEventListener('click', function(){ state.week = addWeeks(state.week,-1); renderSaisie(); });
+  $('wkNext').addEventListener('click', function(){ if(state.week<cur){ state.week = addWeeks(state.week,1); renderSaisie(); } });
+  var wn = $('wkNow'); if(wn) wn.addEventListener('click', function(){ state.week = cur; renderSaisie(); });
+  var ae = $('addExtra'); if(ae) ae.addEventListener('change', function(){ if(!ae.value) return; sessionExtra[w+'|'+me+'|'+ae.value]=true; renderSaisie(); });
+  var cp = $('copyPrev'); if(cp) cp.addEventListener('click', function(){
+    var n=0; Object.keys(state.data.entries).forEach(function(k){ var q=k.split('|'); if(q[0]!==prevWeek || q[2]!==me) return; var nk = entryKey(w,q[1],me);
+      if(!state.data.entries[nk]){ var e = state.data.entries[k]; state.data.entries[nk] = {h:e.h||0, tk:e.tk||0, note:'', ts:new Date().toISOString(), by:state.me.id}; n++; } });
+    persist(true); toast(n+' ligne'+(n>1?'s':'')+' copiée'+(n>1?'s':'')); renderSaisie();
+  });
+  var sw = $('submitWeek'); if(sw) sw.addEventListener('click', function(){
+    var any = Object.keys(state.data.entries).some(function(k){ var q=k.split('|'); return q[0]===w && q[2]===me; });
+    if(!any && state.confirmArmed!=='empty'){ state.confirmArmed='empty'; sw.textContent='Aucune heure saisie — valider quand même ?'; return; }
+    state.confirmArmed=null; state.data.submissions[me+'|'+w] = new Date().toISOString(); persist(true); toast('Semaine validée, merci !'); renderBanners(); renderSaisie();
+  });
+  var us = $('unsubmit'); if(us) us.addEventListener('click', function(){ delete state.data.submissions[me+'|'+w]; persist(true); renderSaisie(); });
+}
+function updateTotals(me, w, u){
+  var t=0, tk=0; Object.keys(state.data.entries).forEach(function(k){ var q=k.split('|'); if(q[0]===w && q[2]===me){ t+=+state.data.entries[k].h||0; tk+=+state.data.entries[k].tk||0; } });
+  if(!$('sumH')) return;
+  $('sumH').textContent = hrs(t); $('sumT').textContent = tk;
+  $('sumCap').textContent = u && u.capacity ? 'soit '+pct(t/u.capacity)+' de la capacité suivi client ('+u.capacity+' h / sem.)' : '';
+}
+
+/* =====================================================================
+   HISTORIQUE (vue RM : ses hôtels, ses heures, ses tickets — sans montants)
+   ===================================================================== */
+function renderHisto(){
+  var el = $('view'); var me = state.me.id;
+  var n = state.histWeeks; var wks = lastWeeks(isoWeekKey(new Date()), n);
+  var hotelIds = {}; activeHotels().forEach(function(h){ if(h.rm===me) hotelIds[h.id]=1; });
+  Object.keys(state.data.entries).forEach(function(k){ var q=k.split('|'); if(q[2]===me && wks.indexOf(q[0])>=0) hotelIds[q[1]]=1; });
+  var hs = Object.keys(hotelIds).map(hotel).filter(Boolean).sort(function(a,b){return a.name.localeCompare(b.name,'fr');});
+  var g = function(w,hid){ return state.data.entries[entryKey(w,hid,me)] || null; };
+  var totH=0, totT=0; var weekTot = {}; wks.forEach(function(w){ weekTot[w]={h:0,tk:0}; });
+  hs.forEach(function(h){ wks.forEach(function(w){ var e=g(w,h.id); if(e){ totH+=+e.h||0; totT+=+e.tk||0; weekTot[w].h+=+e.h||0; weekTot[w].tk+=+e.tk||0; } }); });
+  var filled = wks.filter(function(w){return weekTot[w].h>0;}).length;
+  var html = pageHead('Mon historique', 'Temps passé sur mes hôtels', '<div class="seg no-print" role="group"><button data-n="8" aria-pressed="'+(n===8)+'">8 sem.</button><button data-n="13" aria-pressed="'+(n===13)+'">13 sem.</button><button data-n="26" aria-pressed="'+(n===26)+'">26 sem.</button></div> <button class="btn sm no-print" id="expHist">Exporter CSV</button> <button class="btn sm no-print" id="expWeekJson" title="Fichier à transmettre à l’administrateur si l’application n’est pas partagée en réseau">Envoyer mes saisies (fichier)</button>');
+  html += '<p class="sub">Heures et demandes que vous avez saisies sur les '+n+' dernières semaines, par hôtel de votre portefeuille. Cliquez sur une semaine dans « Ma saisie hebdo » pour la corriger (si elle n’est pas validée).</p>';
+  html += '<div class="tiles">'+tile('Heures', hrs(totH), filled?hrs(totH/filled)+' par semaine saisie':'')+tile('Demandes / tickets', n0(totT), totH?nf1.format(totT/totH)+' par heure':'', 'gold')+tile('Hôtels suivis', hs.length, 'dont '+Object.keys(hotelIds).filter(function(id){var h=hotel(id);return h&&h.rm===me;}).length+' dans mon portefeuille')+tile('Semaines validées', wks.filter(function(w){return state.data.submissions[me+'|'+w];}).length+' / '+n, '')+'</div>';
+  html += '<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Hôtel</th>'+wks.slice().reverse().map(function(w){return '<th class="num">'+weekLabel(w,true)+'</th>';}).join('')+'<th class="num">Total h</th><th class="num">Tickets</th></tr></thead><tbody>';
+  if(!hs.length) html += '<tr><td colspan="'+(wks.length+3)+'" class="empty">Aucun hôtel ni saisie sur la période.</td></tr>';
+  hs.forEach(function(h){
+    var th=0, tt=0;
+    html += '<tr><td><span class="hname">'+esc(h.name)+'</span><div class="muted small">'+esc(h.city||'')+'</div></td>';
+    wks.slice().reverse().forEach(function(w){ var e=g(w,h.id); if(e){ th+=+e.h||0; tt+=+e.tk||0; } html += '<td class="num">'+(e&&(e.h||e.tk)?'<b>'+(e.h?nf1.format(e.h):'–')+'</b><div class="muted small">'+(e.tk||0)+' tk</div>':'<span class="muted">·</span>')+'</td>'; });
+    html += '<td class="num strong">'+(th?hrs(th):'–')+'</td><td class="num strong">'+(tt||'–')+'</td></tr>';
+  });
+  html += '</tbody><tfoot><tr><td>Total</td>'+wks.slice().reverse().map(function(w){return '<td class="num">'+(weekTot[w].h?nf1.format(weekTot[w].h):'–')+'</td>';}).join('')+'<td class="num">'+hrs(totH)+'</td><td class="num">'+totT+'</td></tr></tfoot></table></div></div>';
+  el.innerHTML = html;
+  el.querySelectorAll('[data-n]').forEach(function(b){ b.addEventListener('click', function(){ state.histWeeks = +b.getAttribute('data-n'); renderHisto(); }); });
+  $('expHist').addEventListener('click', function(){
+    var rows = [['Semaine','Lundi','Hôtel','Heures','Tickets','Commentaire','Validée']];
+    wks.forEach(function(w){ hs.forEach(function(h){ var e=g(w,h.id); if(e) rows.push([w, weekMonday(w).toISOString().slice(0,10), h.name, e.h||0, e.tk||0, e.note||'', state.data.submissions[me+'|'+w]?'oui':'non']); }); });
+    exportCsv('lewys-mes-saisies-'+slug(state.me.name), rows);
+  });
+  $('expWeekJson').addEventListener('click', function(){ exportUserEntries(me); });
+}
+function exportUserEntries(uid){
+  var out = {type:'lewys-saisies', user:uid, name:uname(uid), exportedAt:new Date().toISOString(), entries:{}, submissions:{}};
+  Object.keys(state.data.entries).forEach(function(k){ if(k.split('|')[2]===uid) out.entries[k] = state.data.entries[k]; });
+  Object.keys(state.data.submissions).forEach(function(k){ if(k.split('|')[0]===uid) out.submissions[k] = state.data.submissions[k]; });
+  download('lewys-saisies-'+slug(uname(uid))+'-'+todayStr()+'.json', JSON.stringify(out,null,1), 'application/json');
+  toast('Fichier de saisies téléchargé');
+}
+
+/* =====================================================================
+   UTILISATEURS & PARAMÈTRES
+   ===================================================================== */
+function renderParams(){
+  var el = $('view'); var S = state.data.settings;
+  var html = pageHead('Administration', 'Utilisateurs & paramètres', '<span class="saved"></span>');
+  html += '<div class="card"><div class="card-head"><h3>Utilisateurs & accès</h3><span class="spacer"></span><button class="btn sm primary" id="addUser">+ Ajouter un utilisateur</button></div>';
+  html += '<p class="sub" style="margin-top:0">Les <b>administrateurs</b> voient toute l’application (KPIs, contrats, rentabilité). Les autres utilisateurs ne voient que leur saisie hebdomadaire et l’historique de leurs hôtels. Compétences notées de 1 à 5 sur les mêmes axes que les clients : elles servent au calcul d’adéquation RM ↔ hôtel.</p>';
+  html += '<div class="tbl-wrap"><table><thead><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th><th class="c">Admin</th><th class="num">Coût horaire chargé €</th><th class="num">Capacité h/sem.</th><th class="c">Yield</th><th class="c">Relation</th><th class="c">Tech.</th><th class="c">Actif</th><th>Mot de passe</th></tr></thead><tbody>';
+  state.data.users.forEach(function(u){
+    var self = u.id === state.me.id;
+    html += '<tr data-u="'+esc(u.id)+'"><td><input class="in txt" data-f="name" value="'+esc(u.name)+'" style="min-width:110px"></td><td><input class="in txt" data-f="login" value="'+esc(u.login)+'" style="min-width:100px" autocomplete="off"></td><td><input class="in txt" data-f="role" value="'+esc(u.role||'')+'" style="min-width:120px"></td>'+
+      '<td class="c"><input type="checkbox" data-f="isAdmin" '+(u.isAdmin?'checked':'')+' '+(self?'disabled title="Vous ne pouvez pas retirer vos propres droits"':'')+'></td>'+
+      '<td class="num"><input class="in" type="number" min="0" step="1" data-f="cost" value="'+(u.cost!=null?u.cost:'')+'"></td><td class="num"><input class="in" type="number" min="0" step="1" data-f="capacity" value="'+(u.capacity!=null?u.capacity:'')+'"></td>'+
+      ['y','r','t'].map(function(a){ return '<td class="c"><input class="in" style="width:50px" type="number" min="1" max="5" step="1" data-sk="'+a+'" value="'+u.skills[a]+'"></td>'; }).join('')+
+      '<td class="c"><input type="checkbox" data-f="active" '+(u.active?'checked':'')+' '+(self?'disabled':'')+'></td>'+
+      '<td>'+(u.mustChange?'<span class="pill st-warn">provisoire</span> ':'<span class="pill st-good">personnel</span> ')+'<button class="btn sm ghost" data-reset="'+esc(u.id)+'">'+(state.confirmArmed==='reset:'+u.id?'Confirmer ?':'Réinitialiser')+'</button></td></tr>';
+  });
+  html += '</tbody></table></div><p class="muted small" style="margin:8px 0 0">Réinitialiser remet le mot de passe provisoire « '+esc(DEFAULT_PWD)+' » ; l’utilisateur devra le changer à sa prochaine connexion. Désactiver un utilisateur bloque sa connexion sans effacer ses saisies.</p>';
+  html += '<details style="margin-top:10px"><summary class="small">Comment fixer le coût horaire chargé ?</summary><p class="small muted" style="margin:6px 0 0">Salarié / alternant : coût employeur annuel (salaire brut + charges − aides) ÷ heures travaillées par an. Associé : rémunération annuelle cible ÷ heures facturables visées. L’objectif est un étalon commun pour comparer les dossiers, pas la précision comptable.</p></details>';
+  html += '<div class="row" style="margin-top:12px"><label class="ctl"><input type="checkbox" id="costsOk" '+(S.costsConfirmed?'checked':'')+'> Coûts, capacités et compétences validés par les associés</label></div></div>';
+
+  html += '<div class="card"><h3>Seuils de calcul</h3><div class="row" style="margin-top:10px;gap:18px">'+
+    '<label class="ctl">Marge cible <input class="in" type="number" min="0" max="95" step="5" id="sTarget" value="'+Math.round(S.marginTarget*100)+'"> %</label>'+
+    '<label class="ctl">Seuil « Lourd » (score ≥) <input class="in" type="number" min="1" step="0.5" id="sHeavy" value="'+S.heavy+'"></label>'+
+    '<label class="ctl">Seuil « Moyen » (score ≥) <input class="in" type="number" min="1" step="0.5" id="sMed" value="'+S.medium+'"></label>'+
+    '<label class="ctl">Note « haute » (quadrant) <input class="in" type="number" min="1" max="5" step="0.5" id="sHigh" value="'+S.high+'"></label>'+
+    '<label class="ctl">Majoration onboarding <input class="in" type="number" min="0" max="100" step="5" id="sBoost" value="'+Math.round(S.onboardingBoost*100)+'"> %</label>'+
+    '</div><p class="muted small" style="margin:8px 0 0">Mêmes règles que l’onglet « Paramètres » de la matrice Excel : score = Yield + Relation + Technique (×1,2 en onboarding).</p></div>';
+
+  html += '<div class="card"><h3>Données</h3><div class="row" style="margin-top:10px">'+
+    '<button class="btn" id="expJson">Sauvegarde complète (JSON)</button>'+
+    '<label class="btn">Restaurer une sauvegarde<input type="file" id="impJson" accept=".json,application/json" class="hidden"></label>'+
+    '<label class="btn">Importer les saisies d’un RM<input type="file" id="impUser" accept=".json,application/json" class="hidden"></label>'+
+    '<button class="btn" id="expCsv">Exporter toutes les saisies (CSV)</button>'+
+    '<span class="spacer"></span>'+(state.demo?'<button class="btn" data-act="exit-demo">Quitter la démo</button>':'<button class="btn gold" data-act="demo">Mode démo</button>')+
+    '<button class="btn danger" id="resetAll">'+(state.confirmArmed==='resetall'?'Cliquer à nouveau pour tout effacer':'Réinitialiser')+'</button></div>'+
+    '<p class="muted small" id="impMsg" style="margin:10px 0 0">Stockage actuel : '+(adapter===localAdapter?'<b>navigateur de ce poste</b> (localStorage). Tant que l’application n’est pas hébergée sur un serveur, chaque RM peut transmettre ses saisies via « Envoyer mes saisies (fichier) » et vous les importez ici.':'serveur (adaptateur externe).')+'</p></div>';
+
+  html += '<div class="card"><details><summary class="strong">Mise en ligne (note technique)</summary>'+
+    '<p class="small" style="margin:10px 0 6px">Le fichier est autonome. Pour un usage partagé (chaque RM saisit depuis son poste), héberger la page et brancher un stockage serveur en définissant, avant le script :</p>'+
+    '<pre class="small" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px;overflow-x:auto">'+esc("window.LEWYS_STORE_ADAPTER = {\n  load: async () => fetch('/api/pilotage').then(r => r.ok ? r.json() : null),\n  save: async (data) => fetch('/api/pilotage', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)})\n};")+'</pre>'+
+    '<p class="small muted" style="margin:6px 0 0">Important : la connexion par identifiant / mot de passe est gérée dans le navigateur (mots de passe hachés SHA-256 salés). Elle cloisonne l’usage au quotidien mais ne remplace pas une authentification serveur : lors de la mise en ligne, contrôler les droits côté serveur (les RM ne doivent pas recevoir les montants des contrats).</p></details></div>';
+  el.innerHTML = html;
+
+  el.querySelectorAll('tr[data-u] [data-f]').forEach(function(inp){
+    inp.addEventListener(inp.type==='checkbox'?'change':'input', function(){
+      var u = user(inp.closest('tr').getAttribute('data-u')); var f = inp.getAttribute('data-f');
+      if(inp.type==='checkbox'){
+        if(f==='isAdmin' && !inp.checked && state.data.users.filter(function(x){return x.isAdmin && x.active;}).length<=1){ inp.checked = true; toast('Il faut au moins un administrateur'); return; }
+        u[f] = inp.checked;
+      }
+      else if(f==='cost'||f==='capacity'){ var v=num(inp.value); u[f] = v!=null && v>=0 ? v : 0; }
+      else if(f==='login'){ var lg = inp.value.trim().toLowerCase(); if(!lg || state.data.users.some(function(x){return x!==u && x.login.toLowerCase()===lg;})){ inp.style.borderColor='var(--crit)'; return; } inp.style.borderColor=''; u.login = lg; }
+      else u[f] = inp.value;
+      persist();
+    });
+  });
+  el.querySelectorAll('[data-sk]').forEach(function(inp){ inp.addEventListener('input', function(){ var u = user(inp.closest('tr').getAttribute('data-u')); var v = num(inp.value); if(v==null) return; u.skills[inp.getAttribute('data-sk')] = Math.max(1,Math.min(5,v)); persist(); }); });
+  el.querySelectorAll('[data-reset]').forEach(function(b){ b.addEventListener('click', function(){
+    var id = b.getAttribute('data-reset');
+    if(state.confirmArmed !== 'reset:'+id){ state.confirmArmed = 'reset:'+id; renderParams(); return; }
+    state.confirmArmed=null; var u = user(id); u.salt = newSalt(); u.pwd = hashPwd(u.salt, DEFAULT_PWD); u.mustChange = true; persist(true); toast('Mot de passe de '+u.name+' réinitialisé'); renderParams();
+  }); });
+  $('addUser').addEventListener('click', function(){
+    var id = 'u'+Date.now().toString(36); var salt = newSalt(); var base='nouveau', lg=base, i=1; while(state.data.users.some(function(x){return x.login===lg;})) lg = base+(++i);
+    state.data.users.push({id:id,name:'Nouvel utilisateur',login:lg,role:'Revenue manager',isAdmin:false,cost:25,capacity:30,skills:{y:3,r:3,t:3},active:true,salt:salt,pwd:hashPwd(salt,DEFAULT_PWD),mustChange:true});
+    persist(true); renderParams();
+  });
+  $('costsOk').addEventListener('change', function(){ S.costsConfirmed = this.checked; persist(true); renderBanners(); });
+  var bindNum = function(id, fn){ $(id).addEventListener('input', function(){ var v = num(this.value); if(v!=null && v>=0){ fn(v); persist(); } }); };
+  bindNum('sTarget', function(v){ if(v<100) S.marginTarget = v/100; });
+  bindNum('sHeavy', function(v){ S.heavy = v; }); bindNum('sMed', function(v){ S.medium = v; }); bindNum('sHigh', function(v){ S.high = v; });
+  bindNum('sBoost', function(v){ S.onboardingBoost = v/100; });
+  $('expJson').addEventListener('click', function(){ download('lewys-pilotage-sauvegarde-'+todayStr()+'.json', JSON.stringify(state.data,null,1), 'application/json'); toast('Sauvegarde téléchargée'); });
+  $('expCsv').addEventListener('click', function(){
+    var rows = [['Semaine','Lundi','Mois','Hôtel','Groupe','RM','Heures','Tickets','Coût (€)','Commentaire','Validée']];
+    Object.keys(state.data.entries).sort().forEach(function(k){ var q=k.split('|'), e=state.data.entries[k], h=hotel(q[1])||{name:q[1]}, u=user(q[2])||{name:q[2],cost:0};
+      rows.push([q[0], weekMonday(q[0]).toISOString().slice(0,10), monthOfWeek(q[0]), h.name, h.group||'', u.name, e.h||0, e.tk||0, (e.h||0)*(u.cost||0), e.note||'', state.data.submissions[q[2]+'|'+q[0]]?'oui':'non']); });
+    exportCsv('lewys-toutes-saisies', rows);
+  });
+  $('impJson').addEventListener('change', function(){ readJson(this, function(d){
+    if(!d || !Array.isArray(d.hotels) || !Array.isArray(d.users)) throw new Error('format');
+    state.data = normalize(d); state.demo=false; persist(true); var me = user(state.me.id); if(me) state.me = me; render(); $('impMsg').textContent = 'Sauvegarde restaurée : '+state.data.hotels.length+' hôtels, '+Object.keys(state.data.entries).length+' saisies.'; }); });
+  $('impUser').addEventListener('change', function(){ readJson(this, function(d){
+    if(!d || d.type!=='lewys-saisies' || !d.entries) throw new Error('format');
+    var n=0; Object.keys(d.entries).forEach(function(k){ if(k.split('|')[2]===d.user){ state.data.entries[k] = d.entries[k]; n++; } });
+    Object.keys(d.submissions||{}).forEach(function(k){ if(k.split('|')[0]===d.user) state.data.submissions[k] = d.submissions[k]; });
+    persist(true); render(); $('impMsg').textContent = n+' saisies de '+(d.name||d.user)+' importées.'; }); });
+  $('resetAll').addEventListener('click', function(){
+    if(state.confirmArmed !== 'resetall'){ state.confirmArmed = 'resetall'; renderParams(); return; }
+    state.confirmArmed = null; state.data = defaultData(); state.demo=false; persist(true); logout();
+  });
+}
+function readJson(input, cb){
+  var f = input.files && input.files[0]; if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){ try{ cb(JSON.parse(rd.result)); }catch(e){ $('impMsg').textContent = 'Fichier non reconnu : utilisez un export de cette application.'; } input.value=''; };
+  rd.readAsText(f);
+}
+
+/* =====================================================================
+   DÉMO (données fictives, jamais enregistrées)
+   ===================================================================== */
+function buildDemo(){
+  var d = JSON.parse(JSON.stringify(state.data));
+  d.entries = {}; d.submissions = {};
+  var rnd = (function(seed){ return function(){ seed = (seed*16807)%2147483647; return (seed-1)/2147483646; }; })(7);
+  d.hotels.forEach(function(h){
+    var rooms = h.rooms || 30;
+    if(!((h.fixe||0) + (h.varEstimate||0))){ h.fixe = Math.round((520 + rooms*11 + rnd()*320)/10)*10; if(rnd()>0.6){ h.varRate = 1.5; h.varEstimate = Math.round(rooms*9+rnd()*150); } }
+  });
+  var prof = {};
+  d.hotels.forEach(function(h){
+    var sc = ((+h.y||0)+(+h.r||0)+(+h.t||0)) * (h.phase==='Onboarding'?1.2:1);
+    prof[h.id] = {base: 0.9 + sc*0.34 + rnd()*1.2, r:+h.r||2, t:+h.t||1};
+  });
+  if(prof.gingko) prof.gingko.base += 3.2;
+  if(prof.lacoteoceane) prof.lacoteoceane.base += 2;
+  if(prof.fleurdelune) prof.fleurdelune.base += 4.5;
+  if(prof.premiereconciergerie) prof.premiereconciergerie.base = 1.9;
+  if(prof.bwaurayleloch) prof.bwaurayleloch.base += 1.5;
+  var cur = isoWeekKey(new Date());
+  var weeks = lastWeeks(addWeeks(cur,-1), 58);
+  var juniors = d.users.filter(function(u){return !u.isAdmin && u.active;}).map(function(u){return u.id;});
+  weeks.forEach(function(w, wi){
+    var season = 1 + 0.18*Math.sin((+w.split('-W')[1])/52*2*Math.PI - 1);
+    d.hotels.forEach(function(h){
+      var p = prof[h.id]; if(!p || !h.rm) return; if(rnd()<0.06) return;
+      var tot = Math.round(p.base * season * (0.6 + rnd()*0.8) * 4)/4; if(tot<=0) return;
+      var tk = Math.max(0, Math.round((p.r*0.9 + p.t*0.5) * (0.5 + rnd()) ));
+      var uid = h.rm;
+      var u = d.users.find(function(x){return x.id===uid;});
+      if(u && u.isAdmin && juniors.length && rnd()<0.3){
+        var share = Math.round(tot*0.4*4)/4; var j = juniors[Math.floor(rnd()*juniors.length)];
+        if(share>0){ d.entries[w+'|'+h.id+'|'+j] = {h:share, tk:Math.round(tk*0.3), note:'', ts:''}; tot -= share; tk -= Math.round(tk*0.3); }
+      }
+      var note = (h.id==='gingko' && wi%5===1) ? 'Échanges tendus sur la grille, call avec la direction' : (h.id==='lacoteoceane' && wi%6===2) ? 'Désynchro RoomCloud / Chloé à corriger' : (h.id==='fleurdelune' && wi%4===0) ? 'Paramétrage yield dynamique, formation équipe' : '';
+      d.entries[w+'|'+h.id+'|'+uid] = {h:tot, tk:tk, note:note, ts:''};
+    });
+    d.users.forEach(function(u){ if(wi === weeks.length-1 && u.id==='theophile') return; d.submissions[u.id+'|'+w] = new Date().toISOString(); });
+  });
+  d.settings.costsConfirmed = true;
+  return d;
+}
+
+/* =====================================================================
+   DÉMARRAGE
+   ===================================================================== */
+window.LewysPilotage = { getData:function(){ return state.data; }, setData:function(d){ state.data = normalize(d); persist(true); if(state.me) render(); } };
+function init(){
+  return Promise.resolve(adapter.load()).catch(function(){ return null; }).then(function(d){
+    state.data = normalize(d);
+    if(!d) adapter.save(state.data);
+    state.week = isoWeekKey(new Date());
+    state.month = monthOfWeek(state.week);
+    state.year = +state.month.slice(0,4);
+    $('lgFoot').innerHTML = 'Accès réservé à l’équipe Lewys. Première connexion : utilisez le mot de passe provisoire transmis par votre administrateur, il vous sera demandé de le changer.';
+    var sid = null; try{ sid = sessionStorage.getItem(SESSION_KEY); }catch(e){}
+    var u = sid && user(sid);
+    if(u && u.active) startSession(u); else $('lgUser').focus();
+  });
+}
+var rsz; window.addEventListener('resize', function(){ clearTimeout(rsz); rsz = setTimeout(function(){ if(state.me && ['dash','rentab'].indexOf(state.tab)>=0 && !$('overlay').innerHTML) render(); }, 250); });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && $('overlay').querySelector('.drawer')){ closeDrawer(); if(state.me) render(); } });
+init();
+})();
+</script>
+</body>
+</html>

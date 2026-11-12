@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<script>/* Lewys Hub : cette page est pilotée depuis le Hub. Ouverte seule, elle repasse par le Hub (connexion, droits, bouton retour). */(function(){try{var hub=window.parent!==window&&window.parent.LewysHubBridge;if(hub&&hub.online())window.claude=hub.claudeFor('groupes')}catch(e){}})();(function(){try{if(window.top===window){var f=location.pathname.split("/").pop();location.replace("index.html#/page/"+encodeURIComponent(f));}}catch(e){}})();</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lewys Groupes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend+Zetta:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: dark Lewys header band, then a working canvas — list / form + sticky verdict panel / establishments. */
+:root{
+  --bg:#F5F5F8; --surface:#FFFFFF; --surface-2:#EFEEF6; --ink:#1D1D1B; --ink-2:#5A5A63; --line:#E3E2EB;
+  --violet:#3721CA; --on-violet:#FFFFFF; --violet-soft:#ECE9FC; --gold:#B28958; --gold-soft:#F6EEE3; --lav:#ADB7F9;
+  --ok:#1E8858; --ok-soft:#E2F3EA; --warn:#A86F12; --warn-soft:#FBF0DC; --bad:#C0392F; --bad-soft:#FBE6E3;
+  --head:#1D1D1B; --head-ink:#FFFFFF; --head-ink-2:rgba(255,255,255,.62);
+  --f-body:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-label:"Lexend Zetta","Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111016; --surface:#1A1922; --surface-2:#23222D; --ink:#EEEDF4; --ink-2:#A4A3B0; --line:#302F3C;
+  --violet:#A196F7; --on-violet:#14112B; --violet-soft:#27234A; --gold:#D9B68E; --gold-soft:#2E271D; --lav:#5F6AC0;
+  --ok:#53C892; --ok-soft:#15301F; --warn:#E6AE52; --warn-soft:#33281A; --bad:#F08177; --bad-soft:#3A1E1C;
+  --head:#0B0A0F; --head-ink:#F4F3FA; --head-ink-2:rgba(244,243,250,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111016; --surface:#1A1922; --surface-2:#23222D; --ink:#EEEDF4; --ink-2:#A4A3B0; --line:#302F3C;
+  --violet:#A196F7; --on-violet:#14112B; --violet-soft:#27234A; --gold:#D9B68E; --gold-soft:#2E271D; --lav:#5F6AC0;
+  --ok:#53C892; --ok-soft:#15301F; --warn:#E6AE52; --warn-soft:#33281A; --bad:#F08177; --bad-soft:#3A1E1C;
+  --head:#0B0A0F; --head-ink:#F4F3FA; --head-ink-2:rgba(244,243,250,.6); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--head)}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.01em}
+.lbl{font-family:var(--f-label);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.num{font-variant-numeric:tabular-nums}
+a{color:var(--violet)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+
+/* Header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--head);color:var(--head-ink)}
+header.top .wrap{display:flex;align-items:center;gap:24px;padding-block:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:12px;text-decoration:none;color:inherit}
+.brand b{font-size:24px;font-weight:800;letter-spacing:-.03em}
+.brand b i{font-style:normal;color:var(--gold)}
+.brand span{font-family:var(--f-label);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--head-ink-2)}
+nav.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+nav.tabs a{color:var(--head-ink-2);text-decoration:none;padding:8px 14px;border-radius:999px;font-weight:600;font-size:13px}
+nav.tabs a:hover{color:var(--head-ink);background:rgba(255,255,255,.07)}
+nav.tabs a[aria-current="page"]{color:var(--head-ink);background:rgba(255,255,255,.12)}
+nav.tabs a.cta{background:var(--gold);color:#1D1D1B}
+nav.tabs a.cta:hover{filter:brightness(1.06);background:var(--gold)}
+.mode{font-size:11px;color:var(--head-ink-2);display:flex;align-items:center;gap:6px}
+.mode i{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block}
+.mode.live i{background:#53C892}
+
+main{padding-block:28px 64px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.page-head h1{font-size:26px;font-weight:800}
+.page-head p{margin:4px 0 0;color:var(--ink-2)}
+.notice{background:var(--warn-soft);color:var(--warn);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;font-weight:500}
+
+/* Controls */
+.btn{text-decoration:none;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--violet);border-color:var(--violet);color:var(--on-violet)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{color:var(--ink);background:var(--surface-2)}
+.btn.danger{color:var(--bad)}
+.btn.danger.armed{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>span{font-size:12px;font-weight:600;color:var(--ink-2)}
+.field small{color:var(--ink-2);font-size:11.5px}
+input[type=text],input[type=date],input[type=email],input[type=tel],input[type=search],select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:38px}
+textarea{min-height:90px;resize:vertical}
+input:hover,select:hover,textarea:hover{border-color:color-mix(in oklab,var(--ink-2) 50%,var(--line))}
+input:disabled{background:var(--surface-2);color:var(--ink-2)}
+.check{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--violet)}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:720px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:460px){.g2,.g3,.g4{grid-template-columns:minmax(0,1fr)}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.panel>.ph{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 0}
+.panel>.ph h2{font-size:15px;font-weight:700}
+.panel>.pb{padding:16px 20px 20px}
+
+/* Chips */
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;background:var(--surface-2);color:var(--ink-2)}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip.info{background:var(--violet-soft);color:var(--violet)}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.chip.gold{background:var(--gold-soft);color:var(--gold)}
+.chip.plain::before{display:none}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.kpi strong{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.kpi small{color:var(--ink-2);font-size:12px}
+
+/* Filters + table */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:14px 16px;border-bottom:1px solid var(--line)}
+.filters .field{flex:1 1 160px}
+.filters .field.q{flex:2 1 240px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--f-label);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.r,th.r{text-align:right}
+tbody tr.row{cursor:pointer}
+tbody tr.row:hover td{background:color-mix(in oklab,var(--violet-soft) 55%,var(--surface))}
+.t-main{font-weight:700}
+.t-sub{color:var(--ink-2);font-size:12px}
+.pos{color:var(--ok)} .neg{color:var(--bad)}
+.empty{padding:48px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.empty h3{font-size:18px}
+.empty p{color:var(--ink-2);max-width:52ch;margin:0}
+.empty .acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+/* Form layout */
+.formbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.formbar h1{font-size:22px;font-weight:800;margin-right:auto}
+.formbar .ref{font-family:var(--f-label);font-size:10px;letter-spacing:.08em;color:var(--gold)}
+.dirty{font-size:12px;color:var(--warn);font-weight:600}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start}
+@media (max-width:1060px){.layout{grid-template-columns:minmax(0,1fr)}}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 78px)}
+@media (max-width:1060px){.side{position:static}}
+.sec-title{display:flex;align-items:baseline;gap:10px}
+.sec-title em{font-style:normal;font-family:var(--f-label);font-size:9px;letter-spacing:.1em;color:var(--gold)}
+
+/* Nights table */
+.nights th,.nights td{padding:6px 5px;font-size:12.5px}
+.nights th{letter-spacing:.04em;font-size:8.5px}
+.nights th.grp{text-align:center;border-bottom:none;padding-bottom:0}
+.nights th.grp.ly{color:var(--gold)}
+.nights th.grp.g{color:var(--violet)}
+.nights td.date{white-space:nowrap}
+.nights td.date b{display:inline-block;width:34px;color:var(--ink-2);font-weight:600}
+.nights td.date small{display:block;color:var(--ink-2);font-size:11px}
+.nights input{min-height:32px;padding:5px 6px;text-align:right;width:66px;font-variant-numeric:tabular-nums}
+.nights input.w-s{width:50px}
+.nights input.manual{border-color:var(--gold);background:var(--gold-soft)}
+.nights tfoot td{font-weight:800;border-bottom:none;border-top:2px solid var(--line)}
+.nights tr.we td.date b{color:var(--violet)}
+.nights td.c{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+/* Verdict panel */
+.verdict{border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.verdict.ok{background:var(--ok-soft)} .verdict.warn{background:var(--warn-soft)} .verdict.bad{background:var(--bad-soft)} .verdict.neutral{background:var(--surface-2)}
+.verdict .lbl{color:inherit;opacity:.8}
+.verdict.ok .vt{color:var(--ok)} .verdict.warn .vt{color:var(--warn)} .verdict.bad .vt{color:var(--bad)}
+.verdict .vt{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.verdict p{margin:0;font-size:13px}
+.mk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mk>div{background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.mk strong{font-size:18px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.mk small{font-size:11.5px;color:var(--ink-2)}
+.vs{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vs .arrow{color:var(--ink-2)}
+.vs strong{font-size:16px;font-variant-numeric:tabular-nums}
+.floor{position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,var(--bad-soft),var(--warn-soft) 50%,var(--ok-soft));margin:22px 4px 26px}
+.floor .tick{position:absolute;top:-6px;width:2px;height:22px;background:var(--ink)}
+.floor .tick span{position:absolute;top:24px;left:50%;transform:translateX(-50%);font-size:11px;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
+.floor .tick.up span{top:-20px}
+.floor .tick.rate{background:var(--violet)} .floor .tick.rate span{color:var(--violet)}
+.cap{display:flex;flex-direction:column;gap:6px}
+.cap .r{display:grid;grid-template-columns:84px minmax(0,1fr) 84px;white-space:nowrap;gap:8px;align-items:center;font-size:12px}
+.cap .bar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--surface-2)}
+.cap .bar i{display:block;height:100%}
+.cap .g{background:var(--violet)} .cap .t{background:var(--lav)} .cap .d{color:var(--gold);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{border-radius:8px;padding:9px 12px;font-size:12.5px;background:var(--warn-soft);color:var(--warn);font-weight:500}
+.alert.bad{background:var(--bad-soft);color:var(--bad)}
+.alts{display:flex;flex-direction:column;gap:6px}
+.alt{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px}
+.alt b{font-variant-numeric:tabular-nums}
+.side .pb{display:flex;flex-direction:column;gap:16px}
+.divider{height:1px;background:var(--line)}
+
+/* Log */
+.log{display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.log div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px}
+.log time{color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+/* Hotels */
+.hl{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.hl{grid-template-columns:minmax(0,1fr)}}
+.hlist{display:flex;flex-direction:column;gap:8px}
+.hcard{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.hcard:hover{border-color:var(--ink-2)}
+.hcard[aria-current="true"]{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet)}
+.hcard b{font-weight:700}
+.hcard small{color:var(--ink-2)}
+.heat{overflow-x:auto}
+.heat table{border-collapse:separate;border-spacing:2px;width:auto}
+.heat td{padding:0;border:none;width:18px;height:18px;border-radius:3px}
+.heat th{padding:0 8px 0 0;border:none;font-size:9px;text-align:right;background:none}
+.heat td.x{background:transparent}
+.heat .hd th{text-align:center;padding:0;font-size:8px}
+.scale{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-2)}
+.scale i{width:18px;height:10px;border-radius:2px;display:inline-block}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stats div{background:var(--surface-2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stats strong{font-size:17px;font-variant-numeric:tabular-nums}
+code.fmt{display:block;background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:13px;z-index:50;max-width:calc(100% - 32px)}
+.loading{padding:80px 0;text-align:center;color:var(--ink-2)}
+@media (prefers-reduced-motion:no-preference){.btn,.hcard,nav.tabs a{transition:background .15s,border-color .15s,color .15s}}
+
+html,body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#historique"><b>lewys<i>.</i></b><span>Groupes &amp; privatisations</span></a>
+    <nav class="tabs" id="nav">
+      <a href="#historique" data-v="historique">Demandes</a>
+      <a href="#etablissements" data-v="hotels">Établissements &amp; N-1</a>
+      <a href="#nouvelle" data-v="nouvelle" class="cta">+ Nouvelle demande</a>
+    </nav>
+    <div class="mode" id="mode"><i></i><span>Connexion…</span></div>
+  </div>
+</header>
+<main class="wrap" id="app"><div class="loading">Chargement des demandes…</div></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ============ Helpers ============ */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NF0=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
+const EUR=new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const eur=n=>Number.isFinite(n)?EUR.format(Math.round(n)):'—';
+const num=(n,d=0)=>Number.isFinite(n)?new Intl.NumberFormat('fr-FR',{maximumFractionDigits:d,minimumFractionDigits:d}).format(n):'—';
+const pct=(n,d=1)=>Number.isFinite(n)?(n>0?'+':'')+num(n*100,d)+' %':'—';
+const sgnEur=n=>Number.isFinite(n)?(n>0?'+':'')+eur(n):'—';
+const toD=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d))};
+const iso=d=>d.toISOString().slice(0,10);
+const addDays=(s,n)=>{const d=toD(s);d.setUTCDate(d.getUTCDate()+n);return iso(d)};
+const DOW=['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
+const fdow=s=>DOW[toD(s).getUTCDay()];
+const DF=new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const DFs=new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',timeZone:'UTC'});
+const fdate=s=>s?DF.format(toD(s)):'—';
+const fdateS=s=>s?DFs.format(toD(s)):'—';
+const lyDate=s=>addDays(s,-364); // même jour de semaine, N-1
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const uid=()=>Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const pnum=v=>{if(v===''||v==null)return '';const n=parseFloat(String(v).replace(/\s/g,'').replace('€','').replace(',','.'));return Number.isFinite(n)?n:''};
+const n0=v=>Number.isFinite(+v)&&v!==''?+v:0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,2600)}
+
+const STATUS=[
+  ['nouvelle','Nouvelle',''],['etude','En étude','info'],['proposition','Proposition envoyée','info'],
+  ['option','Option posée','warn'],['confirmee','Confirmée','ok'],['refusee','Déclinée par l’hôtel','bad'],['perdue','Perdue','bad']];
+const ACTIVE=['nouvelle','etude','proposition','option'];
+const stLabel=k=>(STATUS.find(s=>s[0]===k)||[k,k])[1];
+const stChip=k=>{const s=STATUS.find(x=>x[0]===k)||[k,k,''];return `<span class="chip ${s[2]}">${esc(s[1])}</span>`};
+const TYPES=['Séminaire','Groupe loisirs','Tour-opérateur','Équipe sportive','Mariage','Privatisation événementielle','Tournage','Autre'];
+const SOURCES=['Email','Téléphone','Site web','Agence / MICE','Plateforme (Cvent, Groupizz…)','Client récurrent','Autre'];
+
+/* ============ State ============ */
+const S={hotels:[],requests:[],ly:{},view:'loading',draft:null,dirty:false,loaded:{h:false,r:false},notice:'',
+  filters:{q:'',status:'actives',hotel:'',when:'avenir'},hotelSel:null,hotelYear:null,me:null,names:{}};
+const hotelById=id=>S.hotels.find(h=>h.id===id);
+
+/* ============ Storage (db partagé ou local) ============ */
+const LKEY='lewys-groupes-v1';
+const Store={
+  mode:'loading',db:null,user:null,local:{hotels:{},requests:{},ly:{}},
+  loadLocal(){try{const t=localStorage.getItem(LKEY);if(t)this.local=Object.assign({hotels:{},requests:{},ly:{}},JSON.parse(t))}catch(e){}},
+  persist(){try{localStorage.setItem(LKEY,JSON.stringify(this.local))}catch(e){}},
+  async saveHotel(h){h=clone(h);h.updatedAt=Date.now();
+    if(this.db)await this.db.collection('hotels').doc(h.id).set(h);else{this.local.hotels[h.id]=h;this.persist();fromLocal()}},
+  async deleteHotel(id){if(this.db)await this.db.collection('hotels').doc(id).delete();else{delete this.local.hotels[id];this.persist();fromLocal()}},
+  async saveRequest(r){r=clone(r);
+    if(this.db)await this.db.collection('requests').doc(r.id).set(r);else{this.local.requests[r.id]=r;this.persist();fromLocal()}},
+  async deleteRequest(id){if(this.db)await this.db.collection('requests').doc(id).delete();else{delete this.local.requests[id];this.persist();fromLocal()}},
+  async getLY(key){
+    if(this.db){const s=await this.db.collection('ly').doc(key).get();return s.exists?(s.data().days||{}):{}}
+    return (this.local.ly[key]||{}).days||{}},
+  async saveLY(key,hotelId,year,days){
+    if(this.db)await this.db.collection('ly').doc(key).set({hotelId,year,days,updatedAt:Date.now()});
+    else{this.local.ly[key]={hotelId,year,days};this.persist()}}
+};
+function fromLocal(){S.hotels=Object.values(Store.local.hotels);S.requests=Object.values(Store.local.requests);S.loaded={h:true,r:true};onData()}
+
+/* N-1 : cache par établissement et par année. Valeur du jour = [chambres vendues, PM, CA annexes total] */
+async function ensureLY(hid,dates,force){
+  const years=[...new Set(dates.map(d=>d.slice(0,4)))];
+  await Promise.all(years.map(async y=>{const k=hid+'_'+y;if(S.ly[k]&&!force)return;
+    try{S.ly[k]=await Store.getLY(k)}catch(e){S.ly[k]={}}}));
+}
+const lyGet=(hid,date)=>{const d=(S.ly[hid+'_'+date.slice(0,4)]||{})[date];return Array.isArray(d)?d:null};
+
+/* ============ Moteur de déplacement ============ */
+function params(h){return{cap:n0(h?.rooms),comm:n0(h?.commission??15)/100,fbm:n0(h?.fbMargin??65)/100,reloc:n0(h?.relocCost??150),safety:n0(h?.safety??10)/100}}
+function analyse(d,h){
+  const P=params(h),cap=P.cap;
+  const attr=n0(d.attrition)/100,gc=n0(d.groupComm)/100,tA=n0(d.trendAdr)/100,tO=n0(d.trendOcc)/100;
+  const rows=d.rows||[],N=rows.length||1;
+  const meetN=n0(d.meetingTotal)/N,otherN=n0(d.otherTotal)/N;
+  const out=rows.map(r=>{
+    const G=d.privatisation?cap:Math.min(cap,Math.max(0,n0(r.groupRooms)));
+    const Gx=G*(1-attr);
+    const hasLy=r.lyRooms!==''&&r.lyRooms!=null;
+    const ly=n0(r.lyRooms),otb=n0(r.otb);
+    const T=Math.max(Math.min(cap,ly*(1+tO)),otb);           // demande transient prévue
+    const free=Math.max(0,cap-G);
+    const D=Math.max(0,T-free);                               // chambres déplacées
+    const kept=Math.min(T,free);
+    const R=Math.max(0,otb-free);                             // réservations à déloger
+    const adr=n0(r.lyAdr)*(1+tA),anc=n0(r.lyAnc);
+    const dispRooms=D*adr,dispAnc=D*anc,dispGross=dispRooms+dispAnc;
+    const dispNet=dispRooms*(1-P.comm)+dispAnc*P.fbm+R*P.reloc;
+    const rate=n0(r.rate),pax=Gx*n0(d.paxPerRoom||1);
+    const gRooms=Gx*rate,gFb=pax*n0(d.fbPerPax),gGross=gRooms+gFb+meetN+otherN;
+    const gNet=gRooms+gFb*P.fbm+meetN+otherN-gc*gGross;
+    const lyGross=ly*n0(r.lyAdr)+ly*anc;
+    const projNo=T*adr+T*anc;
+    return{date:r.date,G,Gx,T,D,kept,R,adr,hasLy,rate,ly,lyOcc:cap?ly/cap:0,
+      occWith:cap?(kept+G)/cap:0,dispGross,dispNet,gGross,gNet,gRooms,gFb,
+      dGross:gGross-dispGross,dNet:gNet-dispNet,lyGross,projNo,projWith:projNo-dispGross+gGross};
+  });
+  const sum=k=>out.reduce((a,o)=>a+o[k],0);
+  const t={grpGross:sum('gGross'),grpNet:sum('gNet'),dispGross:sum('dispGross'),dispNet:sum('dispNet'),
+    D:sum('D'),R:sum('R'),G:sum('G'),Gx:sum('Gx'),lyGross:sum('lyGross'),projNo:sum('projNo'),projWith:sum('projWith'),
+    gRooms:sum('gRooms')};
+  t.dGross=t.grpGross-t.dispGross;t.dNet=t.grpNet-t.dispNet;
+  t.vsLy=t.lyGross?t.projWith/t.lyGross-1:NaN;
+  t.rateAvg=t.Gx?t.gRooms/t.Gx:0;
+  const otherNet=t.grpNet-t.gRooms*(1-gc);
+  t.floor=t.Gx?Math.max(0,(t.dispNet-otherNet)/(t.Gx*(1-gc||1))):NaN;
+  t.target=t.floor*(1+P.safety);
+  const adrW=out.reduce((a,o)=>a+o.adr*Math.max(o.T,1),0)/Math.max(1,out.reduce((a,o)=>a+Math.max(o.T,1),0));
+  t.adrFc=adrW;
+  t.missing=out.filter(o=>!o.hasLy).length;
+  // Verdict
+  let v;
+  if(!rows.length||!h) v={k:'neutral',t:'Analyse en attente',m:'Choisissez un établissement, une date d’arrivée et un nombre de nuits.'};
+  else if(!t.Gx) v={k:'neutral',t:'Analyse en attente',m:'Indiquez le nombre de chambres et le tarif groupe.'};
+  else if(t.D<0.5&&t.R<0.5) v={k:'ok',t:'Accepter',m:'Aucun déplacement prévu : tout le CA groupe est incrémental. Le tarif reste à arbitrer face au marché.'};
+  else if(t.dNet>=0&&t.rateAvg>=t.target) v={k:'ok',t:'Accepter',m:`Le groupe rapporte ${sgnEur(t.dNet)} de contribution nette de plus que la clientèle individuelle déplacée.`};
+  else if(t.dNet>=0) v={k:'warn',t:'Accepter, marge faible',m:`Rentable mais sous la marge de sécurité. Visez ${eur(t.target)} par chambre pour couvrir le risque.`};
+  else if(t.floor<=t.adrFc*1.25) v={k:'warn',t:'Négocier',m:`À ${eur(t.rateAvg)} le groupe détruit ${eur(-t.dNet)} de contribution. Proposez au moins ${eur(t.target)} par chambre ou d’autres dates.`};
+  else v={k:'bad',t:'Décliner ou déplacer',m:`Le prix plancher (${eur(t.floor)}) dépasse largement le PM prévu. Proposez des dates moins chargées.`};
+  t.verdict=v;
+  return{rows:out,t,P};
+}
+
+/* ============ Lignes de nuits ============ */
+async function buildRows(d,h,resetManual){
+  const n=Math.max(0,Math.min(60,Math.round(n0(d.nights))));
+  if(!d.arrival||!n)return[];
+  const old=Object.fromEntries((d.rows||[]).map(r=>[r.date,r]));
+  const dates=[...Array(n)].map((_,i)=>addDays(d.arrival,i));
+  if(h)await ensureLY(h.id,dates.map(lyDate));
+  return dates.map(date=>{
+    const o=old[date],ref=h?lyGet(h.id,lyDate(date)):null;
+    const row={date,groupRooms:o?o.groupRooms:d.roomsPerNight,rate:o?o.rate:d.rate,otb:o?o.otb:'',manual:!!(o&&o.manual&&!resetManual)};
+    if(row.manual){row.lyRooms=o.lyRooms;row.lyAdr=o.lyAdr;row.lyAnc=o.lyAnc}
+    else if(ref){row.lyRooms=ref[0];row.lyAdr=ref[1];row.lyAnc=ref[0]>0?Math.round(ref[2]/ref[0]*100)/100:0}
+    else{row.lyRooms='';row.lyAdr='';row.lyAnc=''}
+    return row});
+}
+function summarize(d,h){const{t}=analyse(d,h);return{grpGross:t.grpGross,dispGross:t.dispGross,dGross:t.dGross,dNet:t.dNet,
+  floor:Number.isFinite(t.floor)?t.floor:null,rateAvg:t.rateAvg,verdict:t.verdict.t,vk:t.verdict.k,roomNights:t.G,lyGross:t.lyGross,projWith:t.projWith}}
+
+/* ============ Rendu ============ */
+function setMode(){const m=$('#mode');m.className='mode'+(Store.mode==='db'?' live':'');
+  m.querySelector('span').textContent=Store.mode==='db'?'Données partagées':Store.mode==='local'?'Enregistré dans ce navigateur':'Connexion…'}
+function setNav(){$$('#nav a').forEach(a=>{const on=(a.dataset.v===S.view)||(a.dataset.v==='nouvelle'&&S.view==='form'&&!S.draft?.id);a.toggleAttribute('aria-current',false);if(on)a.setAttribute('aria-current','page')})}
+function render(){
+  setMode();setNav();const app=$('#app');
+  if(S.view==='loading'||(!S.loaded.h||!S.loaded.r)&&S.view!=='form'){app.innerHTML=`${S.notice?`<div class="notice">${esc(S.notice)}</div>`:''}<div class="loading">Chargement des demandes…</div>`;return}
+  if(S.view==='hotels')return renderHotels();
+  if(S.view==='form')return renderForm();
+  return renderList();
+}
+
+/* ---------- Historique ---------- */
+function renderList(){
+  const f=S.filters,td=today();
+  const all=S.requests.slice();
+  const act=all.filter(r=>ACTIVE.includes(r.status));
+  const pipe=act.reduce((a,r)=>a+n0(r.summary?.grpGross),0);
+  const conf=all.filter(r=>r.status==='confirmee');
+  const confCA=conf.filter(r=>(r.arrival||'')>=td.slice(0,4)+'-01-01').reduce((a,r)=>a+n0(r.summary?.grpGross),0);
+  const decided=all.filter(r=>['confirmee','refusee','perdue'].includes(r.status));
+  const conv=decided.length?conf.length/decided.length:NaN;
+  const urgent=act.filter(r=>r.deadline&&r.deadline<=addDays(td,2)).length;
+  let list=all.filter(r=>{
+    if(f.status==='actives'&&!ACTIVE.includes(r.status))return false;
+    if(f.status&&f.status!=='actives'&&f.status!=='toutes'&&r.status!==f.status)return false;
+    if(f.hotel&&r.hotelId!==f.hotel)return false;
+    const end=r.arrival?addDays(r.arrival,n0(r.nights)):'';
+    if(f.when==='avenir'&&end&&end<td)return false;
+    if(f.when==='passees'&&end&&end>=td)return false;
+    if(f.q){const q=f.q.toLowerCase();const h=hotelById(r.hotelId);
+      if(![r.client,r.company,r.ref,r.type,r.contact,h?.name].join(' ').toLowerCase().includes(q))return false}
+    return true});
+  list.sort((a,b)=>(a.arrival||'').localeCompare(b.arrival||''));
+  const noHotels=!S.hotels.length;
+  $('#app').innerHTML=`
+  ${S.notice?`<div class="notice">${esc(S.notice)}</div>`:''}
+  
+  <div class="page-head"><div><h1>Demandes groupes &amp; privatisations</h1>
+    <p>Historique, statuts et analyse de déplacement de chaque demande.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${Store.mode==='local'?'<button class="btn ghost" id="bk-exp">Exporter une sauvegarde</button><label class="btn ghost" for="bk-imp" style="cursor:pointer">Importer une sauvegarde</label><input type="file" id="bk-imp" accept=".json,application/json" hidden>':''}<a class="btn primary" href="#nouvelle">+ Nouvelle demande</a></div></div>
+  <div class="kpis">
+    <div class="kpi"><span class="lbl">Demandes actives</span><strong class="num">${act.length}</strong><small>${urgent?`<span class="chip warn">${urgent} réponse${urgent>1?'s':''} sous 48 h</span>`:'Aucune échéance proche'}</small></div>
+    <div class="kpi"><span class="lbl">CA groupe en cours</span><strong class="num">${eur(pipe)}</strong><small>Demandes non décidées</small></div>
+    <div class="kpi"><span class="lbl">CA confirmé ${td.slice(0,4)}+</span><strong class="num">${eur(confCA)}</strong><small>${conf.length} groupe${conf.length>1?'s':''} confirmé${conf.length>1?'s':''}</small></div>
+    <div class="kpi"><span class="lbl">Taux de transformation</span><strong class="num">${Number.isFinite(conv)?num(conv*100,0)+' %':'—'}</strong><small>${decided.length} demande${decided.length>1?'s':''} décidée${decided.length>1?'s':''}</small></div>
+  </div>
+  <div class="panel">
+    <div class="filters">
+      <label class="field q"><span>Rechercher</span><input id="fq" type="search" placeholder="Client, société, référence…" value="${esc(f.q)}"></label>
+      <label class="field"><span>Statut</span><select id="fs">
+        <option value="actives"${f.status==='actives'?' selected':''}>Actives</option>
+        <option value="toutes"${f.status==='toutes'?' selected':''}>Tous les statuts</option>
+        ${STATUS.map(s=>`<option value="${s[0]}"${f.status===s[0]?' selected':''}>${esc(s[1])}</option>`).join('')}</select></label>
+      <label class="field"><span>Établissement</span><select id="fh"><option value="">Tous</option>
+        ${S.hotels.map(h=>`<option value="${h.id}"${f.hotel===h.id?' selected':''}>${esc(h.name)}</option>`).join('')}</select></label>
+      <label class="field"><span>Séjours</span><select id="fw">
+        <option value="avenir"${f.when==='avenir'?' selected':''}>À venir</option>
+        <option value="passees"${f.when==='passees'?' selected':''}>Passés</option>
+        <option value="tous"${f.when==='tous'?' selected':''}>Tous</option></select></label>
+    </div>
+    ${noHotels?`<div class="empty"><h3>Commencez par un établissement</h3>
+      <p>L’analyse de déplacement s’appuie sur la capacité de l’hôtel et sur son historique N-1 (chambres vendues, PM, CA annexes). Créez l’établissement puis importez son N-1, ou chargez un jeu d’exemple pour découvrir l’outil.</p>
+      <div class="acts"><a class="btn primary" href="#etablissements">Créer un établissement</a><button class="btn" id="demo">Charger un jeu d’exemple</button></div></div>`
+    :!list.length?`<div class="empty"><h3>Aucune demande</h3><p>${all.length?'Aucune demande ne correspond à ces filtres.':'Saisissez la première demande reçue : l’outil calcule le déplacement par rapport à N-1 et recommande un prix plancher.'}</p>
+      <div class="acts"><a class="btn primary" href="#nouvelle">+ Nouvelle demande</a>${!all.length?'<button class="btn" id="demo">Charger un jeu d’exemple</button>':''}</div></div>`
+    :`<div class="tbl-wrap"><table><thead><tr>
+      <th>Demande</th><th>Établissement</th><th>Séjour</th><th class="r">Ch. × nuits</th><th class="r">Tarif moy.</th><th class="r">CA groupe</th><th class="r">Écart net vs déplacé</th><th>Reco.</th><th>Statut</th></tr></thead><tbody>
+      ${list.map(r=>{const h=hotelById(r.hotelId),s=r.summary||{};const late=ACTIVE.includes(r.status)&&r.deadline&&r.deadline<td;
+        return `<tr class="row" data-id="${r.id}" tabindex="0">
+        <td><div class="t-main">${esc(r.client||r.company||'Sans nom')}${r.demo?' <span class="chip gold plain">Exemple</span>':''}</div><div class="t-sub">${esc(r.ref||'')} · ${esc(r.type||'')}${r.privatisation?' · Privatisation':''}</div></td>
+        <td>${esc(h?.name||'—')}</td>
+        <td class="num"><div>${fdateS(r.arrival)} → ${r.arrival?fdateS(addDays(r.arrival,n0(r.nights))):''}</div><div class="t-sub">${fdow(r.arrival||'2026-01-01')} · ${n0(r.nights)} nuit${n0(r.nights)>1?'s':''}</div></td>
+        <td class="r num">${num(n0(s.roomNights))}</td>
+        <td class="r num">${eur(s.rateAvg)}</td>
+        <td class="r num">${eur(s.grpGross)}</td>
+        <td class="r num ${n0(s.dNet)>=0?'pos':'neg'}">${sgnEur(s.dNet)}</td>
+        <td>${s.verdict?`<span class="chip ${s.vk||''}">${esc(s.verdict)}</span>`:'—'}</td>
+        <td>${stChip(r.status)}${late?'<div class="t-sub neg">Échéance dépassée</div>':r.deadline&&ACTIVE.includes(r.status)?`<div class="t-sub">Réponse avant le ${fdateS(r.deadline)}</div>`:''}</td></tr>`}).join('')}
+      </tbody></table></div>`}
+  </div>`;
+  $('#fq')?.addEventListener('input',e=>{S.filters.q=e.target.value;const p=e.target.selectionStart;renderList();const i=$('#fq');i.focus();i.setSelectionRange(p,p)});
+  $('#fs')?.addEventListener('change',e=>{S.filters.status=e.target.value;renderList()});
+  $('#fh')?.addEventListener('change',e=>{S.filters.hotel=e.target.value;renderList()});
+  $('#fw')?.addEventListener('change',e=>{S.filters.when=e.target.value;renderList()});
+  $$('tr.row').forEach(tr=>{const go=()=>location.hash='demande-'+tr.dataset.id;tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter')go()})});
+  $$('#demo').forEach(b=>b.addEventListener('click',loadDemo));
+  $('#bk-exp')?.addEventListener('click',exportBackup);
+  $('#bk-imp')?.addEventListener('change',importBackup);
+}
+function exportBackup(){
+  const blob=new Blob([JSON.stringify({app:'lewys-groupes',version:1,exportedAt:new Date().toISOString(),...Store.local},null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`lewys-groupes-sauvegarde-${today()}.json`;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Sauvegarde exportée');
+}
+function importBackup(e){
+  const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const o=JSON.parse(rd.result);if(!o.hotels||!o.requests)throw 0;
+    Store.local={hotels:{...Store.local.hotels,...o.hotels},requests:{...Store.local.requests,...o.requests},ly:{...Store.local.ly,...(o.ly||{})}};
+    S.ly={};Store.persist();fromLocal();toast(`Sauvegarde importée : ${Object.keys(o.requests).length} demandes`)}
+    catch(err){toast('Fichier de sauvegarde invalide')}};
+  rd.readAsText(f);
+}
+
+/* ---------- Formulaire demande ---------- */
+function newDraft(){const td=today();return{id:null,status:'nouvelle',type:'Séminaire',client:'',company:'',contact:'',email:'',phone:'',source:'Email',
+  receivedAt:td,deadline:addDays(td,3),hotelId:S.filters.hotel||S.hotels[0]?.id||'',arrival:addDays(td,45),nights:2,privatisation:false,
+  roomsPerNight:20,rate:120,paxPerRoom:1.2,fbPerPax:0,meetingTotal:0,otherTotal:0,groupComm:0,attrition:10,trendAdr:0,trendOcc:0,notes:'',rows:[],log:[]}}
+
+const fv=(k,t='text',extra='')=>`<input id="f-${k}" data-f="${k}" type="${t}" ${t==='text'&&extra.includes('dec')?'inputmode="decimal"':''} value="${esc(S.draft[k]??'')}" ${extra.replace('dec','')}>`;
+function renderForm(){
+  const d=S.draft;if(!d){$('#app').innerHTML='<div class="loading">Chargement de la demande…</div>';return}
+  const h=hotelById(d.hotelId);
+  $('#app').innerHTML=`
+  <div class="formbar">
+    <div><div class="ref">${d.id?esc(d.ref):'NOUVELLE DEMANDE'}</div><h1>${esc(d.client||d.company||'Demande sans nom')}</h1></div>
+    <span class="dirty" id="dirty" ${S.dirty?'':'hidden'}>Modifications non enregistrées</span>
+    <label class="field" style="min-width:200px"><span>Statut</span><select id="f-status" data-f="status">${STATUS.map(s=>`<option value="${s[0]}"${d.status===s[0]?' selected':''}>${esc(s[1])}</option>`).join('')}</select></label>
+    <div style="display:flex;gap:8px;align-self:flex-end;flex-wrap:wrap">
+      <a class="btn ghost" href="#historique">Retour</a>
+      ${d.id?'<button class="btn" id="dup">Dupliquer</button><button class="btn danger" id="del">Supprimer</button>':''}
+      <button class="btn primary" id="save">Enregistrer</button></div>
+  </div>
+  <div class="layout">
+    <div class="stack">
+      <section class="panel"><div class="ph"><div class="sec-title"><em>01</em><h2>Client &amp; demande</h2></div></div><div class="pb grid g3">
+        <label class="field"><span>Nom du groupe / client *</span>${fv('client')}</label>
+        <label class="field"><span>Société / organisateur</span>${fv('company')}</label>
+        <label class="field"><span>Type de demande</span><select id="f-type" data-f="type">${TYPES.map(t=>`<option${d.type===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
+        <label class="field"><span>Contact</span>${fv('contact')}</label>
+        <label class="field"><span>Email</span>${fv('email','email')}</label>
+        <label class="field"><span>Téléphone</span>${fv('phone','tel')}</label>
+        <label class="field"><span>Canal</span><select id="f-source" data-f="source">${SOURCES.map(t=>`<option${d.source===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
+        <label class="field"><span>Reçue le</span>${fv('receivedAt','date')}</label>
+        <label class="field"><span>Réponse attendue avant le</span>${fv('deadline','date')}</label>
+      </div></section>
+
+      <section class="panel"><div class="ph"><div class="sec-title"><em>02</em><h2>Séjour &amp; offre</h2></div></div><div class="pb grid g4">
+        <label class="field" style="grid-column:span 2"><span>Établissement *</span><select id="f-hotelId" data-f="hotelId"><option value="">Choisir…</option>${S.hotels.map(x=>`<option value="${x.id}"${d.hotelId===x.id?' selected':''}>${esc(x.name)} · ${num(n0(x.rooms))} ch.</option>`).join('')}</select>
+          ${S.hotels.length?'':'<small><a href="#etablissements">Créer un établissement</a> pour lancer l’analyse.</small>'}</label>
+        <label class="field"><span>Arrivée *</span>${fv('arrival','date')}</label>
+        <label class="field"><span>Nuits *</span>${fv('nights','text','dec')}</label>
+        <label class="check" style="grid-column:1/-1"><input type="checkbox" id="f-privatisation" data-f="privatisation"${d.privatisation?' checked':''}> Privatisation totale de l’hôtel${h?` (${num(n0(h.rooms))} chambres bloquées chaque nuit)`:''}</label>
+        <label class="field"><span>Chambres / nuit</span>${fv('roomsPerNight','text','dec'+(d.privatisation?' disabled':''))}<small>Appliqué à toutes les nuits</small></label>
+        <label class="field"><span>Tarif groupe / chambre (€ TTC)</span>${fv('rate','text','dec')}<small>Appliqué à toutes les nuits</small></label>
+        <label class="field"><span>Personnes / chambre</span>${fv('paxPerRoom','text','dec')}</label>
+        <label class="field"><span>Restauration (€ / pers. / nuit)</span>${fv('fbPerPax','text','dec')}<small>Demi-pension, forfait…</small></label>
+        <label class="field"><span>Salles &amp; journées d’étude (€, total)</span>${fv('meetingTotal','text','dec')}</label>
+        <label class="field"><span>Autres prestations (€, total)</span>${fv('otherTotal','text','dec')}</label>
+        <label class="field"><span>Commission agence (%)</span>${fv('groupComm','text','dec')}</label>
+        <label class="field"><span>Attrition prévue (%)</span>${fv('attrition','text','dec')}<small>Chambres bloquées non consommées</small></label>
+      </div></section>
+
+      <section class="panel"><div class="ph"><div class="sec-title"><em>03</em><h2>Nuit par nuit vs N-1</h2></div></div>
+        <div class="pb"><div class="grid g4" style="margin-bottom:14px">
+          <label class="field"><span>Tendance PM vs N-1 (%)</span>${fv('trendAdr','text','dec')}<small>Ex. +5 si le marché progresse</small></label>
+          <label class="field"><span>Tendance occupation vs N-1 (%)</span>${fv('trendOcc','text','dec')}<small>Appliquée à la demande individuelle</small></label></div>
+        <div class="tbl-wrap" id="nights"></div>
+        <div class="legend"><span><i style="background:var(--gold-soft);border:1px solid var(--gold)"></i>Valeur N-1 corrigée à la main</span><span>N-1 = même jour de semaine, 364 jours plus tôt</span><span>OTB = chambres déjà réservées cette année</span></div></div>
+      </section>
+
+      <section class="panel"><div class="ph"><div class="sec-title"><em>04</em><h2>Notes &amp; suivi</h2></div></div><div class="pb grid">
+        <label class="field"><span>Notes internes</span><textarea id="f-notes" data-f="notes" placeholder="Contexte, demandes spécifiques, concurrence, historique du client…">${esc(d.notes)}</textarea></label>
+        ${d.log?.length?`<div><div class="lbl" style="margin-bottom:8px">Historique des modifications</div><div class="log" id="log">${renderLog(d.log)}</div></div>`:''}
+      </div></section>
+    </div>
+    <aside class="side"><section class="panel"><div class="ph"><h2>Analyse de déplacement</h2><button class="btn ghost" id="copy">Copier la synthèse</button></div><div class="pb" id="results"></div></section></aside>
+  </div>`;
+  bindForm();renderNights();recalc();loadAlternatives();
+  if(d.log?.length)resolveNames(d.log.map(l=>l.by).filter(Boolean));
+}
+function renderLog(log){return log.slice().reverse().map(l=>`<div><time>${new Date(l.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</time><span>${esc(l.text)}${l.by&&S.names[l.by]?` <span class="t-sub">· ${esc(S.names[l.by])}</span>`:''}</span></div>`).join('')}
+async function resolveNames(ids){const u=Store.user;if(!u||!ids.length)return;try{const ps=await u.profiles([...new Set(ids)]);for(const id in ps)S.names[id]=ps[id]?.name||'';const el=$('#log');if(el&&S.draft)el.innerHTML=renderLog(S.draft.log)}catch(e){}}
+
+function renderNights(){
+  const d=S.draft,el=$('#nights');if(!el)return;const h=hotelById(d.hotelId);
+  if(!h||!d.rows.length){el.innerHTML=`<p class="t-sub" style="margin:0">${!h?'Choisissez un établissement pour charger le N-1.':'Indiquez la date d’arrivée et le nombre de nuits.'}</p>`;return}
+  const inp=(i,k,cls='')=>`<input type="text" inputmode="decimal" data-r="${i}" data-k="${k}" class="${cls}${['lyRooms','lyAdr','lyAnc'].includes(k)&&d.rows[i].manual?' manual':''}" value="${esc(d.rows[i][k])}" ${k==='groupRooms'&&d.privatisation?'disabled':''} aria-label="${k} ${d.rows[i].date}">`;
+  el.innerHTML=`<table class="nights"><thead>
+    <tr><th></th><th colspan="4" class="grp ly">N-1 (même jour)</th><th></th><th colspan="2" class="grp g">Groupe</th><th colspan="3"></th></tr>
+    <tr><th>Nuit</th><th class="r">Ch. vendues</th><th class="r">PM</th><th class="r">Annexes / ch.</th><th class="r">Occ.</th><th class="r">OTB</th><th class="r">Chambres</th><th class="r">Tarif</th><th class="r">Déplacées</th><th class="r">CA déplacé</th><th class="r">Écart net</th></tr></thead><tbody>
+    ${d.rows.map((r,i)=>{const dw=toD(r.date).getUTCDay();return `<tr class="${dw===5||dw===6?'we':''}">
+      <td class="date"><b>${fdow(r.date)}</b>${fdateS(r.date)}<small>N-1 : ${fdow(lyDate(r.date))} ${fdateS(lyDate(r.date))}</small></td>
+      <td>${inp(i,'lyRooms','w-s')}</td><td>${inp(i,'lyAdr')}</td><td>${inp(i,'lyAnc','w-s')}</td>
+      <td class="c" id="c-occ-${i}"></td><td>${inp(i,'otb','w-s')}</td>
+      <td>${inp(i,'groupRooms','w-s')}</td><td>${inp(i,'rate')}</td>
+      <td class="c" id="c-D-${i}"></td><td class="c" id="c-disp-${i}"></td><td class="c" id="c-dn-${i}"></td></tr>`}).join('')}
+    </tbody><tfoot><tr><td>Total</td><td class="c" id="t-ly"></td><td class="c" id="t-adr"></td><td></td><td class="c" id="t-occ"></td><td class="c" id="t-otb"></td><td class="c" id="t-G"></td><td class="c" id="t-rate"></td><td class="c" id="t-D"></td><td class="c" id="t-disp"></td><td class="c" id="t-dn"></td></tr></tfoot></table>`;
+}
+
+function recalc(){
+  const d=S.draft;if(!d)return;const h=hotelById(d.hotelId);const A=analyse(d,h),t=A.t;
+  A.rows.forEach((o,i)=>{const set=(id,v,cls)=>{const e=$('#'+id);if(e){e.textContent=v;if(cls!==undefined)e.className='c '+cls}};
+    set('c-occ-'+i,o.hasLy?num(o.lyOcc*100,0)+' %':'—');set('c-D-'+i,num(o.D,1),o.D>0?'neg':'');
+    set('c-disp-'+i,eur(o.dispGross));set('c-dn-'+i,sgnEur(o.dNet),o.dNet>=0?'pos':'neg')});
+  const set=(id,v,c)=>{const e=$('#'+id);if(e){e.textContent=v;if(c!==undefined)e.className='c '+c}};
+  const lyS=A.rows.reduce((a,o)=>a+o.ly,0),cap=A.P.cap*A.rows.length;
+  const adrLy=lyS?A.rows.reduce((a,o)=>a+o.ly*n0(d.rows.find(r=>r.date===o.date)?.lyAdr),0)/lyS:NaN;
+  set('t-ly',num(lyS));set('t-adr',eur(adrLy));set('t-occ',cap?num(lyS/cap*100,0)+' %':'—');
+  set('t-otb',num(d.rows.reduce((a,r)=>a+n0(r.otb),0)));set('t-G',num(t.G));set('t-rate',eur(t.rateAvg));
+  set('t-D',num(t.D,1),t.D>0?'neg':'');set('t-disp',eur(t.dispGross));set('t-dn',sgnEur(t.dNet),t.dNet>=0?'pos':'neg');
+  $('#results').innerHTML=renderResults(A,d,h);
+  $('#results').querySelectorAll('[data-alt]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.alt;S.draft.arrival=v;$('#f-arrival').value=v;markDirty();structural(false)}));
+}
+
+function renderResults(A,d,h){
+  const t=A.t,v=t.verdict;
+  const lo=Math.min(t.floor||0,t.rateAvg||0,t.adrFc||0)*0.8,hi=Math.max(t.target||0,t.rateAvg||0,t.adrFc||0)*1.15||1;
+  const pos=x=>Math.max(0,Math.min(100,(x-lo)/(hi-lo||1)*100));
+  const showFloor=Number.isFinite(t.floor)&&t.Gx>0;
+  const alerts=[];
+  if(h&&t.missing)alerts.push(`<div class="alert">${t.missing} nuit${t.missing>1?'s':''} sans données N-1 : saisissez-les dans le tableau ou importez le N-1 de l’établissement.</div>`);
+  if(t.R>0)alerts.push(`<div class="alert bad">${num(t.R)} réservation${t.R>1?'s':''} déjà en portefeuille à déloger (coût estimé ${eur(t.R*A.P.reloc)} inclus dans l’analyse).</div>`);
+  if(d.privatisation&&t.D>0)alerts.push(`<div class="alert">Privatisation : toute la clientèle individuelle prévue est déplacée (${num(t.D,0)} chambres-nuits).</div>`);
+  const maxCap=A.P.cap||1;
+  return `
+  <div class="verdict ${v.k}"><span class="lbl">Recommandation</span><span class="vt">${esc(v.t)}</span><p>${esc(v.m)}</p></div>
+  <div class="mk">
+    <div><span class="lbl">CA groupe</span><strong>${eur(t.grpGross)}</strong><small>${num(t.Gx,0)} ch.-nuits facturées</small></div>
+    <div><span class="lbl">CA individuel déplacé</span><strong>${eur(t.dispGross)}</strong><small>${num(t.D,1)} ch.-nuits perdues</small></div>
+    <div><span class="lbl">Écart de CA</span><strong class="${t.dGross>=0?'pos':'neg'}">${sgnEur(t.dGross)}</strong><small>Brut, groupe − déplacé</small></div>
+    <div><span class="lbl">Écart de contribution</span><strong class="${t.dNet>=0?'pos':'neg'}">${sgnEur(t.dNet)}</strong><small>Après commissions et coût F&amp;B</small></div>
+  </div>
+  <div><div class="lbl" style="margin-bottom:6px">CA de la période vs N-1</div>
+    <div class="vs"><span><span class="t-sub">N-1</span><br><strong>${eur(t.lyGross)}</strong></span><span class="arrow">→</span>
+    <span><span class="t-sub">Projeté avec le groupe</span><br><strong>${eur(t.projWith)}</strong></span>
+    <span class="chip ${t.vsLy>=0?'ok':'bad'} plain">${pct(t.vsLy)}</span></div>
+    <div class="t-sub" style="margin-top:4px">Sans le groupe : ${eur(t.projNo)} (${pct(t.lyGross?t.projNo/t.lyGross-1:NaN)} vs N-1)</div></div>
+  ${showFloor?`<div><div class="lbl">Prix plancher par chambre</div>
+    <div class="floor">
+      <div class="tick" style="left:${pos(t.floor)}%"><span>Plancher ${eur(t.floor)}</span></div>
+      <div class="tick up" style="left:${pos(t.target)}%;background:var(--ok)"><span style="color:var(--ok)">Cible ${eur(t.target)}</span></div>
+      <div class="tick rate up" style="left:${pos(t.rateAvg)}%;${Math.abs(pos(t.rateAvg)-pos(t.target))<14?'top:-6px':''}"><span ${Math.abs(pos(t.rateAvg)-pos(t.target))<14?'style="top:24px"':''}>Proposé ${eur(t.rateAvg)}</span></div>
+    </div>
+    <div class="t-sub">Plancher = tarif où le groupe compense exactement la contribution déplacée. Cible = plancher + ${num(A.P.safety*100,0)} % de marge de sécurité. PM individuel prévu : ${eur(t.adrFc)}.</div></div>`:''}
+  ${A.rows.length&&h?`<div><div class="lbl" style="margin-bottom:8px">Remplissage par nuit (${num(maxCap)} ch.)</div><div class="cap">
+    ${A.rows.map(o=>`<div class="r"><span class="t-sub">${fdow(o.date)} ${fdateS(o.date)}</span><div class="bar" title="Groupe ${num(o.G)} · Individuel ${num(o.kept,0)}"><i class="g" style="width:${o.G/maxCap*100}%"></i><i class="t" style="width:${o.kept/maxCap*100}%"></i></div><span class="d">${o.D>0.05?'−'+num(o.D,0)+' déplac.':''}</span></div>`).join('')}
+    </div><div class="legend"><span><i style="background:var(--violet)"></i>Groupe</span><span><i style="background:var(--lav)"></i>Individuel conservé</span><span style="color:var(--gold)">Chambres déplacées</span></div></div>`:''}
+  ${alerts.length?`<div class="alerts">${alerts.join('')}</div>`:''}
+  <div id="alts">${S.altHtml||''}</div>`;
+}
+
+/* Dates alternatives : ±21 jours, même profil, données N-1 de référence */
+async function loadAlternatives(){
+  const d=S.draft;const h=hotelById(d?.hotelId);S.altHtml='';
+  if(!d||!h||!d.arrival||!(n0(d.nights)>0)){const e=$('#alts');if(e)e.innerHTML='';return}
+  const tok=(S.altTok=(S.altTok||0)+1);
+  const n=Math.min(30,Math.round(n0(d.nights)));
+  const span=[];for(let o=-21;o<=21+n;o++)span.push(lyDate(addDays(d.arrival,o)));
+  await ensureLY(h.id,span);if(tok!==S.altTok)return;
+  const base=analyse(d,h).t;const rate=base.rateAvg||n0(d.rate);
+  const res=[];
+  for(let o=-21;o<=21;o++){if(!o)continue;const arr=addDays(d.arrival,o);
+    const rows=[...Array(n)].map((_,i)=>{const dt=addDays(arr,i),ref=lyGet(h.id,lyDate(dt));
+      return{date:dt,groupRooms:d.privatisation?h.rooms:n0(d.roomsPerNight),rate,otb:'',
+        lyRooms:ref?ref[0]:'',lyAdr:ref?ref[1]:'',lyAnc:ref&&ref[0]>0?ref[2]/ref[0]:0}});
+    if(rows.some(r=>r.lyRooms===''))continue;
+    const t=analyse({...d,arrival:arr,rows},h).t;res.push({arr,o,dNet:t.dNet,D:t.D})}
+  res.sort((a,b)=>b.dNet-a.dNet);
+  const top=res.filter(r=>r.dNet>base.dNet+50).slice(0,3);
+  S.altHtml=top.length?`<div class="divider"></div><div style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">Dates alternatives plus rentables (±3 semaines)</div><div class="alts">
+    ${top.map(r=>`<div class="alt"><span><b>${fdow(r.arr)} ${fdate(r.arr)}</b><br><span class="t-sub">${r.o>0?'+':''}${r.o} j · ${num(r.D,0)} ch. déplacées</span></span><b class="${r.dNet>=0?'pos':'neg'}">${sgnEur(r.dNet)}</b><button class="btn ghost" data-alt="${r.arr}">Appliquer</button></div>`).join('')}
+    </div><div class="t-sub" style="margin-top:6px">Au même tarif (${eur(rate)}), sur la base du N-1, sans l’OTB.</div></div>`:'';
+  const e=$('#alts');if(e){e.innerHTML=S.altHtml;e.querySelectorAll('[data-alt]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.alt;S.draft.arrival=v;$('#f-arrival').value=v;markDirty();structural(false)}))}
+}
+
+function markDirty(){S.dirty=true;const e=$('#dirty');if(e)e.hidden=false}
+let rbTok=0;
+async function structural(resetManual){
+  const d=S.draft,h=hotelById(d.hotelId),tok=++rbTok;
+  const rows=await buildRows(d,h,resetManual);if(tok!==rbTok)return;
+  d.rows=rows;renderNights();recalc();loadAlternatives();
+}
+const NUMF=['nights','roomsPerNight','rate','paxPerRoom','fbPerPax','meetingTotal','otherTotal','groupComm','attrition','trendAdr','trendOcc'];
+function bindForm(){
+  const app=$('#app'),d=S.draft;
+  app.querySelectorAll('[data-f]').forEach(el=>{
+    const k=el.dataset.f;
+    const read=()=>el.type==='checkbox'?el.checked:NUMF.includes(k)?pnum(el.value):el.value;
+    el.addEventListener('input',()=>{d[k]=read();markDirty();
+      if(k==='client'||k==='company')$('.formbar h1').textContent=d.client||d.company||'Demande sans nom';
+      if(['paxPerRoom','fbPerPax','meetingTotal','otherTotal','groupComm','attrition','trendAdr','trendOcc'].includes(k)){recalc();clearTimeout(S._at);S._at=setTimeout(loadAlternatives,500)}});
+    el.addEventListener('change',()=>{d[k]=read();markDirty();
+      if(k==='hotelId'){structural(true);const h=hotelById(d.hotelId);const lab=$('#f-privatisation')?.parentElement;if(lab&&h)lab.lastChild.textContent=` Privatisation totale de l’hôtel (${num(n0(h.rooms))} chambres bloquées chaque nuit)`}
+      else if(k==='arrival'||k==='nights')structural(false);
+      else if(k==='privatisation'){$('#f-roomsPerNight').disabled=d.privatisation;renderNights();recalc();loadAlternatives()}
+      else if(k==='roomsPerNight'){d.rows.forEach(r=>r.groupRooms=d.roomsPerNight);renderNights();recalc();loadAlternatives()}
+      else if(k==='rate'){d.rows.forEach(r=>r.rate=d.rate);renderNights();recalc();loadAlternatives()}
+    })});
+  $('#nights').addEventListener('input',e=>{const el=e.target;if(!el.dataset.k)return;const r=d.rows[+el.dataset.r];const k=el.dataset.k;
+    r[k]=pnum(el.value);if(['lyRooms','lyAdr','lyAnc'].includes(k)){r.manual=true;el.classList.add('manual')}markDirty();recalc()});
+  $('#nights').addEventListener('change',()=>{clearTimeout(S._at);S._at=setTimeout(loadAlternatives,300)});
+  $('#save').addEventListener('click',saveDraft);
+  $('#copy').addEventListener('click',copySummary);
+  $('#dup')?.addEventListener('click',()=>{const c=clone(S.draft);c.id=null;c.ref=null;c.status='nouvelle';c.log=[];c.demo=false;c.client=(c.client||'')+' (copie)';S.draft=c;S.dirty=true;S.view='form';history.replaceState(null,'','#nouvelle');render();toast('Copie créée : pensez à l’enregistrer')});
+  const del=$('#del');del?.addEventListener('click',async()=>{
+    if(!del.classList.contains('armed')){del.classList.add('armed');del.textContent='Confirmer la suppression';setTimeout(()=>{if(del.isConnected){del.classList.remove('armed');del.textContent='Supprimer'}},4000);return}
+    try{await Store.deleteRequest(S.draft.id);S.dirty=false;toast('Demande supprimée');location.hash='historique'}catch(e){toast('Suppression impossible : '+(e.code||'erreur'))}});
+}
+
+async function saveDraft(){
+  const d=S.draft,h=hotelById(d.hotelId);
+  if(!(d.client||d.company)){toast('Indiquez le nom du client');$('#f-client').focus();return}
+  if(!h||!d.arrival||!(n0(d.nights)>0)){toast('Établissement, arrivée et nombre de nuits sont requis');return}
+  const now=Date.now(),prev=d.id?S.requests.find(x=>x.id===d.id):null;
+  d.summary=summarize(d,h);d.updatedAt=now;d.log=d.log||[];
+  if(!d.id){d.id=uid();d.ref='GRP-'+today().slice(2,4)+today().slice(5,7)+'-'+d.id.slice(0,4).toUpperCase();d.createdAt=now;
+    d.log.push({at:now,by:S.me,text:`Demande créée (${stLabel(d.status)}) · ${eur(d.summary.grpGross)} · reco. ${d.summary.verdict}`})}
+  else{const ch=[];
+    if(prev){if(prev.status!==d.status)ch.push(`Statut : ${stLabel(prev.status)} → ${stLabel(d.status)}`);
+      if(Math.round(n0(prev.summary?.rateAvg))!==Math.round(d.summary.rateAvg))ch.push(`Tarif moyen : ${eur(prev.summary?.rateAvg)} → ${eur(d.summary.rateAvg)}`);
+      if(prev.arrival!==d.arrival||n0(prev.nights)!==n0(d.nights))ch.push(`Dates : ${fdateS(prev.arrival)} (${prev.nights} n.) → ${fdateS(d.arrival)} (${d.nights} n.)`);
+      if(Math.round(n0(prev.summary?.roomNights))!==Math.round(d.summary.roomNights))ch.push(`Volume : ${num(n0(prev.summary?.roomNights))} → ${num(d.summary.roomNights)} ch.-nuits`)}
+    d.log.push({at:now,by:S.me,text:ch.length?ch.join(' · '):'Demande modifiée'})}
+  if(d.log.length>60)d.log=d.log.slice(-60);
+  const btn=$('#save');btn.disabled=true;btn.textContent='Enregistrement…';
+  try{await Store.saveRequest(d);S.dirty=false;toast('Demande enregistrée');
+    if(location.hash!=='#demande-'+d.id){S.skipRoute=true;location.hash='demande-'+d.id}
+    S.requests=S.requests.filter(x=>x.id!==d.id).concat([clone(d)]);render()}
+  catch(e){toast(e.code==='invalid_argument'?'Vous n’avez pas les droits d’écriture sur cet outil':'Enregistrement impossible ('+(e.code||'erreur')+')');btn.disabled=false;btn.textContent='Enregistrer'}
+}
+
+function copySummary(){
+  const d=S.draft,h=hotelById(d.hotelId),A=analyse(d,h),t=A.t;
+  const txt=[`Demande ${d.ref||'(non enregistrée)'} — ${d.client||d.company||'Sans nom'} (${d.type})`,
+    `Établissement : ${h?.name||'—'}`,
+    `Séjour : du ${fdate(d.arrival)} au ${d.arrival?fdate(addDays(d.arrival,n0(d.nights))):'—'} (${n0(d.nights)} nuits) · ${d.privatisation?'privatisation totale':num(n0(d.roomsPerNight))+' ch./nuit'}`,
+    `Tarif groupe moyen : ${eur(t.rateAvg)} · prix plancher ${eur(t.floor)} · cible ${eur(t.target)}`,
+    `CA groupe : ${eur(t.grpGross)} · CA individuel déplacé : ${eur(t.dispGross)} (${num(t.D,1)} ch.-nuits)`,
+    `Écart de CA : ${sgnEur(t.dGross)} · écart de contribution : ${sgnEur(t.dNet)}`,
+    `CA période N-1 : ${eur(t.lyGross)} → projeté avec groupe : ${eur(t.projWith)} (${pct(t.vsLy)})`,
+    `Recommandation : ${t.verdict.t} — ${t.verdict.m}`].join('\n');
+  const done=()=>toast('Synthèse copiée');
+  try{navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt))}catch(e){fallbackCopy(txt)}
+}
+function fallbackCopy(txt){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Synthèse copiée')}catch(e){toast('Copie impossible')}ta.remove()}
+
+/* ---------- Établissements & N-1 ---------- */
+function renderHotels(){
+  if(!S.hotelSel||(!hotelById(S.hotelSel)&&S.hotelSel!=='new'))S.hotelSel=S.hotels[0]?.id||'new';
+  const h=S.hotelSel==='new'?{id:null,name:'',city:'',rooms:'',commission:15,fbMargin:65,relocCost:150,safety:10}:hotelById(S.hotelSel);
+  const y=S.hotelYear||String(new Date().getFullYear()-1);
+  $('#app').innerHTML=`
+  <div class="page-head"><div><h1>Établissements &amp; N-1</h1><p>Capacité, hypothèses financières et historique N-1 utilisés par l’analyse de déplacement.</p></div>
+  ${!S.hotels.length?'<button class="btn" id="demo">Charger un jeu d’exemple</button>':''}</div>
+  <div class="hl">
+    <div class="hlist">
+      ${S.hotels.map(x=>`<button class="hcard" data-h="${x.id}" aria-current="${x.id===S.hotelSel}"><b>${esc(x.name)}</b><small>${esc(x.city||'')}${x.city?' · ':''}${num(n0(x.rooms))} chambres</small></button>`).join('')}
+      <button class="btn" data-h="new">+ Nouvel établissement</button>
+    </div>
+    <div class="stack">
+      <section class="panel"><div class="ph"><h2>${h.id?esc(h.name):'Nouvel établissement'}</h2>${h.demo?'<span class="chip gold plain">Exemple</span>':''}</div><div class="pb grid g4">
+        <label class="field" style="grid-column:span 2"><span>Nom *</span><input id="h-name" type="text" value="${esc(h.name)}"></label>
+        <label class="field"><span>Ville</span><input id="h-city" type="text" value="${esc(h.city)}"></label>
+        <label class="field"><span>Chambres *</span><input id="h-rooms" type="text" inputmode="decimal" value="${esc(h.rooms)}"></label>
+        <label class="field"><span>Coût de distribution individuel (%)</span><input id="h-commission" type="text" inputmode="decimal" value="${esc(h.commission)}"><small>Commissions OTA moyennes</small></label>
+        <label class="field"><span>Marge F&amp;B (%)</span><input id="h-fbMargin" type="text" inputmode="decimal" value="${esc(h.fbMargin)}"><small>Après coût matière</small></label>
+        <label class="field"><span>Coût d’un délogement (€)</span><input id="h-relocCost" type="text" inputmode="decimal" value="${esc(h.relocCost)}"></label>
+        <label class="field"><span>Marge de sécurité (%)</span><input id="h-safety" type="text" inputmode="decimal" value="${esc(h.safety)}"><small>Au-dessus du prix plancher</small></label>
+        <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+          ${h.id?'<button class="btn danger" id="h-del">Supprimer</button>':''}<button class="btn primary" id="h-save">${h.id?'Enregistrer':'Créer l’établissement'}</button></div>
+      </div></section>
+      ${h.id?`<section class="panel"><div class="ph"><h2>Historique N-1</h2>
+        <label class="field" style="width:110px"><span>Année</span><select id="h-year">${[...Array(6)].map((_,i)=>{const yy=String(new Date().getFullYear()-4+i);return `<option${yy===y?' selected':''}>${yy}</option>`}).join('')}</select></label></div>
+        <div class="pb" style="display:flex;flex-direction:column;gap:16px"><div id="heat"><div class="t-sub">Chargement…</div></div></div></section>
+      <section class="panel"><div class="ph"><h2>Importer des données N-1</h2></div><div class="pb grid">
+        <p style="margin:0" class="t-sub">Collez un export de votre PMS ou RMS (Excel → copier les colonnes). Une ligne par jour, séparateur point-virgule, tabulation ou virgule. Les jours déjà présents sont remplacés.</p>
+        <code class="fmt">Date ; Chambres vendues ; Prix moyen (€) ; CA annexes du jour (€, facultatif)
+14/05/2025 ; 72 ; 138,50 ; 2 140</code>
+        <textarea id="h-csv" placeholder="Collez vos données ici…" style="min-height:140px;font-variant-numeric:tabular-nums"></textarea>
+        <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"><span class="t-sub" id="h-parse"></span><button class="btn primary" id="h-import" disabled>Importer</button></div>
+      </div></section>`:''}
+    </div>
+  </div>`;
+  $$('[data-h]').forEach(b=>b.addEventListener('click',()=>{S.hotelSel=b.dataset.h;renderHotels()}));
+  $('#demo')?.addEventListener('click',loadDemo);
+  $('#h-save').addEventListener('click',async()=>{
+    const v=k=>$('#h-'+k).value;const o={...(h.id?h:{id:uid()}),name:v('name').trim(),city:v('city').trim(),rooms:pnum(v('rooms')),
+      commission:pnum(v('commission')),fbMargin:pnum(v('fbMargin')),relocCost:pnum(v('relocCost')),safety:pnum(v('safety'))};
+    if(!o.name||!(o.rooms>0)){toast('Nom et nombre de chambres requis');return}
+    try{await Store.saveHotel(o);S.hotelSel=o.id;if(!hotelById(o.id))S.hotels.push(o);else Object.assign(hotelById(o.id),o);toast(h.id?'Établissement enregistré':'Établissement créé');renderHotels()}
+    catch(e){toast('Enregistrement impossible ('+(e.code||'erreur')+')')}});
+  const del=$('#h-del');del?.addEventListener('click',async()=>{
+    const used=S.requests.filter(r=>r.hotelId===h.id).length;
+    if(!del.classList.contains('armed')){del.classList.add('armed');del.textContent=used?`Confirmer (${used} demande${used>1?'s':''} liée${used>1?'s':''})`:'Confirmer la suppression';return}
+    try{await Store.deleteHotel(h.id);S.hotels=S.hotels.filter(x=>x.id!==h.id);S.hotelSel=null;toast('Établissement supprimé');renderHotels()}catch(e){toast('Suppression impossible')}});
+  if(!h.id)return;
+  $('#h-year').addEventListener('change',e=>{S.hotelYear=e.target.value;drawHeat(h,e.target.value)});
+  drawHeat(h,y,true);
+  const ta=$('#h-csv'),btn=$('#h-import'),info=$('#h-parse');let parsed=null;
+  ta.addEventListener('input',()=>{parsed=parseCSV(ta.value);info.textContent=ta.value.trim()?`${parsed.rows.length} jour${parsed.rows.length>1?'s':''} reconnu${parsed.rows.length>1?'s':''}${parsed.bad?` · ${parsed.bad} ligne${parsed.bad>1?'s':''} ignorée${parsed.bad>1?'s':''}`:''}`:'';btn.disabled=!parsed.rows.length});
+  btn.addEventListener('click',async()=>{if(!parsed?.rows.length)return;btn.disabled=true;btn.textContent='Import…';
+    try{const byY={};parsed.rows.forEach(r=>{(byY[r.date.slice(0,4)]||(byY[r.date.slice(0,4)]=[])).push(r)});
+      for(const yy in byY){const k=h.id+'_'+yy;await ensureLY(h.id,[yy+'-01-01'],true);const days={...(S.ly[k]||{})};
+        byY[yy].forEach(r=>days[r.date]=[r.rooms,r.adr,r.anc]);await Store.saveLY(k,h.id,+yy,days);S.ly[k]=days}
+      toast(`${parsed.rows.length} jours importés`);S.hotelYear=Object.keys(byY).sort().pop();renderHotels()}
+    catch(e){toast('Import impossible ('+(e.code||'erreur')+')');btn.disabled=false;btn.textContent='Importer'}});
+}
+function parseCSV(txt){
+  const rows=[];let bad=0;
+  txt.split(/\r?\n/).forEach(line=>{if(!line.trim())return;
+    let c=line.includes(';')?line.split(';'):line.includes('\t')?line.split('\t'):line.split(',');
+    c=c.map(x=>x.trim());const ds=c[0];let date=null,m;
+    if((m=ds.match(/^(\d{4})-(\d{2})-(\d{2})/)))date=`${m[1]}-${m[2]}-${m[3]}`;
+    else if((m=ds.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/))){const yy=m[3].length===2?'20'+m[3]:m[3];date=`${yy}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}
+    const rooms=pnum(c[1]),adr=pnum(c[2]),anc=pnum(c[3]);
+    if(!date||rooms===''||adr===''){bad++;return}
+    rows.push({date,rooms,adr,anc:anc===''?0:anc})});
+  return{rows,bad:Math.max(0,bad-(rows.length&&bad?1:0))};
+}
+async function drawHeat(h,y,first){
+  await ensureLY(h.id,[y+'-01-01'],first);const days=S.ly[h.id+'_'+y]||{};const el=$('#heat');if(!el)return;
+  const cap=n0(h.rooms)||1;const keys=Object.keys(days);
+  if(!keys.length){el.innerHTML=`<div class="t-sub">Aucune donnée N-1 pour ${y}. Importez un export ci-dessous.</div>`;return}
+  let sR=0,sRev=0,sAnc=0;keys.forEach(k=>{const v=days[k];sR+=n0(v[0]);sRev+=n0(v[0])*n0(v[1]);sAnc+=n0(v[2])});
+  const M=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  const col=o=>`color-mix(in oklab, var(--violet) ${Math.round(Math.max(0,Math.min(1,o))**1.6*100)}%, var(--surface-2))`;
+  el.innerHTML=`<div class="stats">
+    <div><span class="lbl">Occupation</span><strong>${num(sR/(keys.length*cap)*100,1)} %</strong></div>
+    <div><span class="lbl">Prix moyen</span><strong>${eur(sR?sRev/sR:NaN)}</strong></div>
+    <div><span class="lbl">RevPAR</span><strong>${eur(sRev/(keys.length*cap))}</strong></div>
+    <div><span class="lbl">Jours renseignés</span><strong>${keys.length}</strong></div></div>
+  <div class="heat" style="margin-top:14px"><table><thead><tr class="hd"><th></th>${[...Array(31)].map((_,i)=>`<th>${i+1}</th>`).join('')}</tr></thead><tbody>
+    ${M.map((mn,mi)=>`<tr><th class="lbl">${mn}</th>${[...Array(31)].map((_,di)=>{const ds=`${y}-${String(mi+1).padStart(2,'0')}-${String(di+1).padStart(2,'0')}`;
+      const ok=toD(ds).getUTCMonth()===mi;if(!ok)return '<td class="x"></td>';const v=days[ds];
+      return v?`<td style="background:${col(n0(v[0])/cap)}" title="${fdow(ds)} ${fdate(ds)} · ${num(n0(v[0]))} ch. (${num(n0(v[0])/cap*100,0)} %) · PM ${eur(n0(v[1]))}"></td>`:'<td style="background:var(--surface-2);opacity:.45" title="Pas de donnée"></td>'}).join('')}</tr>`).join('')}
+  </tbody></table></div>
+  <div class="scale" style="margin-top:10px">Occupation N-1 ${[0,.4,.6,.8,1].map(o=>`<i style="background:${col(o)}"></i>${num(o*100)} %`).join(' ')}</div>`;
+}
+
+/* ---------- Jeu d'exemple ---------- */
+async function loadDemo(){
+  const btns=$$('#demo');btns.forEach(b=>{b.disabled=true;b.textContent='Création…'});
+  try{
+    const hid='demo-'+uid().slice(0,4);
+    const h={id:hid,name:'Hôtel Démo Bastille',city:'Paris 11e',rooms:85,commission:17,fbMargin:65,relocCost:160,safety:10,demo:true};
+    await Store.saveHotel(h);if(!hotelById(hid))S.hotels.push(h);
+    let seed=20251;const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+    const base=[.60,.67,.74,.80,.84,.86,.77,.70,.89,.86,.77,.68],adrM=[.88,.9,.97,1.04,1.1,1.14,1.06,.98,1.16,1.08,.96,.95],dowF=[.74,1.04,1.12,1.13,1.06,.94,1.0];
+    for(const yy of [2025,2026]){const days={};
+      for(let d=toD(yy+'-01-01');d.getUTCFullYear()===yy;d.setUTCDate(d.getUTCDate()+1)){
+        const m=d.getUTCMonth(),w=d.getUTCDay();const occ=Math.min(1,Math.max(.25,base[m]*dowF[w]*(0.92+rnd()*0.16)));
+        const rooms=Math.round(occ*85);const adr=Math.round(118*adrM[m]*(0.78+0.42*occ)*(0.97+rnd()*0.06)*100)/100;
+        days[iso(d)]=[rooms,adr,Math.round(rooms*(16+rnd()*10))]}
+      await Store.saveLY(hid+'_'+yy,hid,yy,days);S.ly[hid+'_'+yy]=days}
+    const mk=async(o)=>{const d={...newDraft(),...o,hotelId:hid,demo:true};d.rows=await buildRows(d,h,true);
+      d.id=uid();d.ref='GRP-'+today().slice(2,4)+today().slice(5,7)+'-'+d.id.slice(0,4).toUpperCase();d.createdAt=Date.now();d.updatedAt=Date.now();
+      d.summary=summarize(d,h);d.log=[{at:Date.now(),by:S.me,text:'Exemple créé'}];await Store.saveRequest(d);S.requests.push(d)};
+    await mk({client:'Séminaire Laboratoires Arvel (exemple)',company:'Arvel Pharma',type:'Séminaire',source:'Agence / MICE',status:'etude',
+      arrival:'2027-03-16',nights:2,roomsPerNight:25,rate:129,paxPerRoom:1,fbPerPax:58,meetingTotal:2400,groupComm:8,attrition:10,deadline:addDays(today(),2)});
+    await mk({client:'Mariage Durand–Lefèvre (exemple)',type:'Mariage',source:'Site web',status:'proposition',privatisation:true,
+      arrival:'2027-06-11',nights:2,rate:145,paxPerRoom:1.9,fbPerPax:95,otherTotal:3500,attrition:0,deadline:addDays(today(),6)});
+    await mk({client:'Circuit Kyoto Travel (exemple)',company:'Kyoto Travel Europe',type:'Tour-opérateur',source:'Email',status:'nouvelle',
+      arrival:'2026-12-14',nights:3,roomsPerNight:40,rate:89,paxPerRoom:2,fbPerPax:22,groupComm:10,attrition:5,deadline:addDays(today(),1)});
+    S.filters.hotel='';S.filters.status='actives';S.filters.when='avenir';toast('Jeu d’exemple créé');location.hash='historique';render();
+  }catch(e){toast('Création impossible ('+(e.code||e.message||'erreur')+')');btns.forEach(b=>{b.disabled=false;b.textContent='Charger un jeu d’exemple'})}
+}
+
+/* ============ Données & routage ============ */
+function onData(){
+  if(S.pendingId&&S.loaded.r){const id=S.pendingId;S.pendingId=null;const r=S.requests.find(x=>x.id===id);
+    if(r){S.draft=clone(r);S.dirty=false;S.view='form';render();return}S.view='historique'}
+  if(S.view==='form'){const sel=$('#f-hotelId');if(!S.draft||(sel&&sel.options.length-1!==S.hotels.length&&!S.dirty))render();return}
+  render();
+}
+function route(){
+  if(S.skipRoute){S.skipRoute=false;return}
+  const hsh=location.hash.slice(1)||'historique';
+  if(hsh==='nouvelle'){if(!S.draft||S.draft.id)S.draft=newDraft(),S.dirty=false;S.view='form';render();if(S.loaded.h)structural(false);return}
+  if(hsh.startsWith('demande-')){const id=hsh.slice(8);const r=S.requests.find(x=>x.id===id);S.view='form';
+    if(r){S.draft=clone(r);S.dirty=false;render();structural(false)}else{S.draft=null;S.pendingId=id;render()}return}
+  S.draft=hsh==='nouvelle'?S.draft:null;
+  S.view=hsh==='etablissements'?'hotels':'historique';render();
+}
+window.addEventListener('hashchange',route);
+window.addEventListener('beforeunload',e=>{if(S.dirty&&S.view==='form'){e.preventDefault();e.returnValue=''}});
+
+const withTimeout=(p,ms)=>Promise.race([p,sleep(ms).then(()=>null)]);
+async function boot(){
+  route();
+  let db=null,user=null;
+  try{if(window.claude&&typeof window.claude.use==='function'){[db,user]=await Promise.all([withTimeout(window.claude.use('db'),10000),withTimeout(window.claude.use('user'),10000)])}}catch(e){}
+  if(db){Store.db=db;Store.mode='db';Store.user=user;try{S.me=user?await user.id():null}catch(e){}
+    const timer=setTimeout(()=>{if(!S.loaded.h||!S.loaded.r){S.notice='Les données partagées ne répondent pas encore : elles s’afficheront dès que la connexion sera rétablie.';render()}},10000);
+    const ok=()=>{if(S.loaded.h&&S.loaded.r){clearTimeout(timer);if(S.notice&&S.notice.startsWith('Les données partagées ne'))S.notice=''}};
+    db.collection('hotels').onSnapshot(s=>{S.hotels=s.docs.map(d=>({...d.data(),id:d.id}));S.loaded.h=true;ok();onData();
+        if(S.view==='form'&&S.draft&&!S.draft.rows?.length)structural(false)},
+      e=>{S.loaded.h=true;S.notice='Impossible de charger les établissements ('+e.code+').';onData()});
+    db.collection('requests').onSnapshot(s=>{S.requests=s.docs.map(d=>({...d.data(),id:d.id}));S.loaded.r=true;ok();onData()},
+      e=>{S.loaded.r=true;S.notice='Impossible de charger les demandes ('+e.code+').';onData()});
+  }else{Store.mode='local';Store.loadLocal();fromLocal();if(S.view==='form'&&S.draft)structural(false)}
+  setMode();
+}
+boot();
+</script>
+
+</body>
+</html>
