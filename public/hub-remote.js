@@ -24,7 +24,7 @@ const Remote = {
   /* Place les données reçues du serveur dans le Hub */
   apply(st){
     DB = Object.assign({ users:[], tools:[], feeds:[] }, st.hub, { tracking:st.tracking || {} });
-    ME = DB.users.find(u => u.id === st.me) || null;
+    ME = DB.users.find(u => u.id === st.me) || null; this.conn = st.conn || {};
     if(st.suivi) this.cacheSuivi(st.suivi, st.now);
     if(ME && Array.isArray(st.notes)){ const a = UStore.all(); a.notes = st.notes; try{ localStorage.setItem(UStore.key(), JSON.stringify(a)) }catch(e){} }
   },

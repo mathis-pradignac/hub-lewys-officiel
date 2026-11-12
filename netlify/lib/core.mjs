@@ -54,15 +54,21 @@ export function createApi(kv, opts = {}){
   }
 
   /* ---------- sessions ---------- */
-  async function makeToken(uid){ const p = Buffer.from(JSON.stringify({ u:uid, e:Date.now() + SESSION_HOURS * 3600e3 })).toString('base64url');
+  async function sign(obj){ const p = Buffer.from(JSON.stringify(obj)).toString('base64url');
     return p + '.' + crypto.createHmac('sha256', await secret()).update(p).digest('base64url') }
-  async function auth(req){
-    const t = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), [p, sig] = t.split('.');
+  async function unsign(t){
+    const [p, sig] = String(t || '').split('.');
     if(!p || !sig) throw new HttpError(401, 'Connexion requise.');
     const good = crypto.createHmac('sha256', await secret()).update(p).digest('base64url');
     if(sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) throw new HttpError(401, 'Session invalide.');
     let d; try{ d = JSON.parse(Buffer.from(p, 'base64url').toString()) }catch(e){ throw new HttpError(401, 'Session invalide.') }
     if(!d.e || d.e < Date.now()) throw new HttpError(401, 'Session expirée : reconnectez-vous.');
+    return d;
+  }
+  const makeToken = uid => sign({ u:uid, e:Date.now() + SESSION_HOURS * 3600e3 });
+  async function auth(req){
+    const d = await unsign((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''));
+    if(d.p) throw new HttpError(401, 'Session invalide.');   // un jeton de connexion Slack/Notion n'ouvre pas de session
     const me = (await hub()).users.find(u => u.id === d.u); if(!me) throw new HttpError(401, 'Compte supprimé.');
     return me;
   }
@@ -74,7 +80,7 @@ export function createApi(kv, opts = {}){
   async function fullState(me){
     const h = await hub(), tr = await getv('tracking', {}), su = await suivi(), notes = await getv('notes/' + me.id, []);
     const mine = {}; Object.keys(tr).forEach(k => { if(isAdmin(me) || k.endsWith('|' + me.id)) mine[k] = tr[k] });
-    return { me:me.id, hub:pubHub(h, me), tracking:mine, suivi:{ data:su.data, v:su.v }, notes, now:Date.now() };
+    return { me:me.id, hub:pubHub(h, me), tracking:mine, suivi:{ data:su.data, v:su.v }, notes, conn:pubConn(await getv('conn/' + me.id, {}), await getv('integrations', {})), now:Date.now() };
   }
 
   /* ---------- Suivi client : fusion sans écraser le travail des collègues ---------- */
@@ -146,6 +152,161 @@ export function createApi(kv, opts = {}){
     return update('press', c => ({ items, at:res.some(r => r.status === 'fulfilled') ? Date.now() : (c && c.at) || 0, tried:Date.now(), failed, since:(c && c.since) || Date.now() }), { items:[], at:0 });
   }
 
+
+  /* =========================================================
+     SLACK & NOTION — comptes personnels reliés au Hub
+     Les jetons d'accès restent sur le serveur : le navigateur ne les voit jamais.
+     ========================================================= */
+  const SLACK_SCOPES = 'channels:read,groups:read,im:read,mpim:read,channels:history,groups:history,im:history,mpim:history,users:read,chat:write';
+  const pubConn = (c, cfg) => ({ slack:c.slack ? { name:c.slack.name, team:c.slack.team, teamId:c.slack.teamId } : null, notion:c.notion ? { workspace:c.notion.workspace } : null,
+    slackReady:!!(cfg.slackClientId && cfg.slackClientSecret), notionReady:!!(cfg.notionClientId && cfg.notionClientSecret) });
+  const gone = prov => new HttpError(428, (prov === 'slack' ? 'Slack' : 'Notion') + ' : reconnectez votre compte dans « Mes connexions ».');
+  async function token(me, prov){ const c = (await getv('conn/' + me.id, {}))[prov]; if(!c || !c.token) throw gone(prov); return c }
+  async function slack(tk, method, params = {}){
+    const r = await fetchImpl('https://slack.com/api/' + method, { method:'POST', signal:AbortSignal.timeout(8000), headers:{ authorization:'Bearer ' + tk, 'content-type':'application/x-www-form-urlencoded' }, body:new URLSearchParams(params).toString() });
+    const j = await r.json().catch(() => ({ ok:false, error:'réponse illisible' }));
+    if(!j.ok){ if(['invalid_auth', 'token_revoked', 'account_inactive', 'not_authed', 'token_expired'].includes(j.error)) throw gone('slack'); throw new HttpError(j.error === 'ratelimited' ? 429 : 502, 'Slack : ' + j.error) }
+    return j;
+  }
+  async function notion(tk, path, body){
+    const r = await fetchImpl('https://api.notion.com/v1' + path, { method:body ? 'POST' : 'GET', signal:AbortSignal.timeout(8000), headers:{ authorization:'Bearer ' + tk, 'notion-version':'2022-06-28', 'content-type':'application/json' }, body:body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok){ if(r.status === 401) throw gone('notion'); throw new HttpError(r.status === 404 ? 404 : 502, 'Notion : ' + (j.message || r.status)) }
+    return j;
+  }
+  /* ----- Slack : noms des personnes, conversations, messages ----- */
+  async function slackUsers(c){
+    const key = 'slackusers/' + c.teamId, cur = await getv(key); if(cur && Date.now() - cur.at < 30 * 60e3) return cur.map;
+    const map = {}; let cursor = '';
+    for(let i = 0; i < 5; i++){ const j = await slack(c.token, 'users.list', Object.assign({ limit:'500' }, cursor ? { cursor } : {}));
+      (j.members || []).forEach(u => { map[u.id] = (u.profile && (u.profile.display_name || u.profile.real_name)) || u.real_name || u.name });
+      cursor = j.response_metadata && j.response_metadata.next_cursor; if(!cursor) break }
+    await update(key, () => ({ at:Date.now(), map }), null).catch(() => {}); return map;
+  }
+  async function slackConvs(c, users){
+    const out = []; let cursor = '';
+    for(let i = 0; i < 3; i++){ const j = await slack(c.token, 'users.conversations', Object.assign({ types:'public_channel,private_channel,mpim,im', exclude_archived:'true', limit:'200' }, cursor ? { cursor } : {}));
+      (j.channels || []).forEach(ch => { if(ch.is_im && ch.user === 'USLACKBOT') return;
+        out.push({ id:ch.id, kind:ch.is_im ? 'im' : ch.is_mpim ? 'mpim' : ch.is_private ? 'private' : 'channel',
+          name:ch.is_im ? (users[ch.user] || 'Message direct') : ch.is_mpim ? String(ch.name || '').replace(/^mpdm-/, '').replace(/-\d+$/, '').split('--').map(n => n).join(', ') : ch.name }) });
+      cursor = j.response_metadata && j.response_metadata.next_cursor; if(!cursor) break }
+    const rank = { im:0, mpim:1, channel:2, private:2 };
+    return out.sort((a, b) => rank[a.kind] - rank[b.kind] || String(a.name).localeCompare(String(b.name), 'fr'));
+  }
+  const slackText = (t, users) => String(t || '').replace(/<@([A-Z0-9]+)(?:\|[^>]*)?>/g, (m, id) => '@' + (users[id] || 'quelqu’un')).replace(/<#[A-Z0-9]+\|([^>]*)>/g, '#$1').replace(/<!(here|channel|everyone)(?:\|[^>]*)?>/g, '@$1')
+    .replace(/<((?:https?|mailto):[^|>]+)\|([^>]+)>/g, '[$2]($1)').replace(/<((?:https?|mailto):[^>]+)>/g, '$1').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s.,;:!?)])/g, '$1**$2**').replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s.,;:!?)])/g, '$1*$2*');   // gras et italique façon Slack
+  const slackMsg = (m, users, meId) => ({ ts:m.ts, user:m.user || m.bot_id || '', name:users[m.user] || m.username || (m.bot_profile && m.bot_profile.name) || 'Application', mine:m.user === meId,
+    text:slackText(m.text, users) || (m.files && m.files.length ? '' : (m.attachments && m.attachments[0] && (m.attachments[0].fallback || m.attachments[0].text)) || ''), files:(m.files || []).map(f => f.name || f.title || 'fichier').slice(0, 5), thread:m.reply_count || 0 });
+  const keepMsg = m => !m.subtype || ['thread_broadcast', 'file_share', 'bot_message', 'me_message'].includes(m.subtype);
+  const batches = async (items, n, fn) => { const out = []; for(let i = 0; i < items.length; i += n) out.push(...await Promise.all(items.slice(i, i + n).map(x => fn(x).catch(() => null)))); return out };
+
+  /* ----- Notion : texte et blocs simplifiés ----- */
+  const rich = a => (a || []).map(t => { let s = t.plain_text || ''; if(!s.trim()) return s; const an = t.annotations || {};
+    if(an.code) s = '`' + s + '`'; if(an.bold) s = '**' + s + '**'; if(an.italic) s = '*' + s + '*'; if(t.href && /^https?:/.test(t.href)) s = '[' + s + '](' + t.href + ')'; return s }).join('');
+  const plain = a => (a || []).map(t => t.plain_text || '').join('');
+  const nTitle = o => o.object === 'database' ? plain(o.title) : plain(((Object.values(o.properties || {}).find(p => p.type === 'title') || {}).title)) ;
+  const nItem = o => ({ id:o.id, type:o.object, title:nTitle(o) || 'Sans titre', icon:o.icon && o.icon.type === 'emoji' ? o.icon.emoji : '', url:o.url, edited:o.last_edited_time });
+  const nProp = p => { if(!p) return ''; const v = p[p.type];
+    switch(p.type){ case 'select': case 'status': return v ? v.name : ''; case 'multi_select': return (v || []).map(x => x.name).join(', '); case 'date': return v ? v.start + (v.end ? ' → ' + v.end : '') : '';
+      case 'people': return (v || []).map(x => x.name || '').filter(Boolean).join(', '); case 'number': return v == null ? '' : String(v); case 'checkbox': return v ? 'oui' : 'non';
+      case 'rich_text': return plain(v).slice(0, 120); case 'url': case 'email': case 'phone_number': return v || ''; default: return '' } };
+  async function nBlocks(tk, id, depth, budget){
+    const out = []; let cursor = '';
+    for(let i = 0; i < 3 && budget.n > 0; i++){
+      const j = await notion(tk, '/blocks/' + id + '/children?page_size=100' + (cursor ? '&start_cursor=' + cursor : ''));
+      for(const b of (j.results || [])){ if(budget.n-- <= 0) break; const d = b[b.type] || {}, x = { t:b.type };
+        if(d.rich_text) x.text = rich(d.rich_text);
+        if(b.type === 'to_do') x.checked = !!d.checked;
+        if(b.type === 'child_page' || b.type === 'child_database'){ x.id = b.id; x.text = d.title || 'Sans titre' }
+        if(b.type === 'image' || b.type === 'file' || b.type === 'pdf' || b.type === 'video'){ x.url = (d.external && d.external.url) || (d.file && d.file.url) || ''; x.text = plain(d.caption) }
+        if(b.type === 'bookmark' || b.type === 'embed' || b.type === 'link_preview'){ x.url = d.url || ''; x.text = plain(d.caption) }
+        if(b.type === 'code') x.lang = d.language || '';
+        if(b.type === 'callout') x.icon = d.icon && d.icon.type === 'emoji' ? d.icon.emoji : '';
+        if(b.type === 'table_row') x.cells = (d.cells || []).map(rich);
+        if(b.has_children && depth > 0 && b.type !== 'child_page' && b.type !== 'child_database') x.children = await nBlocks(tk, b.id, depth - 1, budget).catch(() => []);
+        out.push(x) }
+      cursor = j.has_more ? j.next_cursor : ''; if(!cursor) break }
+    return out;
+  }
+  const nText = (blocks, ind = '') => blocks.map(b => { const pre = { heading_1:'# ', heading_2:'## ', heading_3:'### ', bulleted_list_item:'- ', numbered_list_item:'1. ', to_do:b.checked ? '[x] ' : '[ ] ', quote:'> ', child_page:'[Sous-page] ', child_database:'[Base de données] ' }[b.t] || '';
+    const line = b.t === 'table_row' ? (b.cells || []).join(' | ') : (b.text || b.url || ''); return (line ? ind + pre + line + '\n' : '') + (b.children ? nText(b.children, ind + '  ') : '') }).join('');
+
+  async function appsPublic(parts, url){   // retour de la fenêtre de connexion Slack / Notion (sans session : l'identité est dans le jeton signé)
+    const prov = parts[1], page = (ok, msg) => new Response(`<!doctype html><meta charset="utf-8"><title>Lewys Hub</title><body style="font-family:system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;background:#F7F7FB;color:#1D1D1B"><div style="text-align:center;max-width:420px;padding:24px"><h2 style="margin:0 0 8px">${ok ? 'Compte connecté' : 'Connexion impossible'}</h2><p style="color:#6B6B73;line-height:1.5">${msg}</p></div><script>try{window.opener&&window.opener.postMessage({lewysHub:'oauth',provider:${JSON.stringify(prov)},ok:${ok ? 'true' : 'false'}},location.origin)}catch(e){}${ok ? 'setTimeout(function(){window.close()},900)' : ''}</script>`, { status:200, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store' } });
+    try{
+      if(url.searchParams.get('error')) return page(false, 'L’autorisation a été refusée ou annulée. Vous pouvez fermer cette fenêtre.');
+      const st = await unsign(url.searchParams.get('state')); if(st.p !== prov) throw new Error('état invalide');
+      const cfg = await getv('integrations', {}), code = url.searchParams.get('code'), redirect = url.origin + '/api/oauth/' + prov + '/callback'; let c;
+      if(prov === 'slack'){
+        const r = await fetchImpl('https://slack.com/api/oauth.v2.access', { method:'POST', signal:AbortSignal.timeout(8000), headers:{ 'content-type':'application/x-www-form-urlencoded' }, body:new URLSearchParams({ client_id:cfg.slackClientId, client_secret:cfg.slackClientSecret, code, redirect_uri:redirect }).toString() });
+        const j = await r.json(); if(!j.ok || !j.authed_user || !j.authed_user.access_token) throw new Error(j.error || 'réponse inattendue');
+        c = { token:j.authed_user.access_token, userId:j.authed_user.id, team:(j.team && j.team.name) || 'Slack', teamId:(j.team && j.team.id) || '', name:'' };
+        try{ c.name = (await slackUsers(c))[c.userId] || '' }catch(e){}
+      } else {
+        const r = await fetchImpl('https://api.notion.com/v1/oauth/token', { method:'POST', signal:AbortSignal.timeout(8000), headers:{ 'content-type':'application/json', authorization:'Basic ' + Buffer.from(cfg.notionClientId + ':' + cfg.notionClientSecret).toString('base64') }, body:JSON.stringify({ grant_type:'authorization_code', code, redirect_uri:redirect }) });
+        const j = await r.json(); if(!r.ok || !j.access_token) throw new Error(j.error_description || j.error || 'réponse inattendue');
+        c = { token:j.access_token, workspace:j.workspace_name || 'Notion' };
+      }
+      await update('conn/' + st.u, cur => { cur[prov] = c; return cur }, {});
+      return page(true, 'Vous pouvez revenir au Hub : cette fenêtre se ferme toute seule.');
+    }catch(e){ return page(false, 'Le compte n’a pas pu être relié (' + str(e.message, 120).replace(/[<>&]/g, '') + '). Fermez cette fenêtre et réessayez depuis « Mes connexions ».') }
+  }
+
+  async function appsRoutes(me, parts, m, url, body){
+    const [a, b, c] = parts;
+    if(a === 'integrations' && m === 'PUT'){ needAdmin(me); const inc = await body();
+      const next = await update('integrations', cur => { ['slackClientId', 'notionClientId'].forEach(k => { if(inc[k] !== undefined) cur[k] = str(inc[k], 200).trim() });
+        ['slackClientSecret', 'notionClientSecret'].forEach(k => { if(inc[k]) cur[k] = str(inc[k], 300).trim() }); return cur }, {});
+      return json({ slackClientId:next.slackClientId || '', notionClientId:next.notionClientId || '', slackSecret:!!next.slackClientSecret, notionSecret:!!next.notionClientSecret });
+    }
+    if(a === 'integrations' && m === 'GET'){ needAdmin(me); const cur = await getv('integrations', {});
+      return json({ slackClientId:cur.slackClientId || '', notionClientId:cur.notionClientId || '', slackSecret:!!cur.slackClientSecret, notionSecret:!!cur.notionClientSecret, redirectSlack:url.origin + '/api/oauth/slack/callback', redirectNotion:url.origin + '/api/oauth/notion/callback', slackScopes:SLACK_SCOPES }) }
+    if(a === 'oauth' && c === 'start' && m === 'GET'){
+      const cfg = await getv('integrations', {}), state = await sign({ u:me.id, p:b, e:Date.now() + 10 * 60e3 }), redirect = url.origin + '/api/oauth/' + b + '/callback';
+      if(b === 'slack'){ if(!cfg.slackClientId || !cfg.slackClientSecret) throw new HttpError(400, 'Slack n’est pas encore configuré par l’administrateur.');
+        return json({ url:'https://slack.com/oauth/v2/authorize?' + new URLSearchParams({ client_id:cfg.slackClientId, user_scope:SLACK_SCOPES, redirect_uri:redirect, state }) }) }
+      if(b === 'notion'){ if(!cfg.notionClientId || !cfg.notionClientSecret) throw new HttpError(400, 'Notion n’est pas encore configuré par l’administrateur.');
+        return json({ url:'https://api.notion.com/v1/oauth/authorize?' + new URLSearchParams({ client_id:cfg.notionClientId, response_type:'code', owner:'user', redirect_uri:redirect, state }) }) }
+    }
+    if(a === 'conn' && m === 'GET') return json(pubConn(await getv('conn/' + me.id, {}), await getv('integrations', {})));
+    if(a === 'conn' && m === 'DELETE' && ['slack', 'notion'].includes(b)){ await update('conn/' + me.id, cur => { delete cur[b]; return cur }, {}); return json({ ok:true }) }
+
+    if(a === 'slack'){
+      const c0 = await token(me, 'slack'), users = await slackUsers(c0);
+      if(b === 'convs' && m === 'GET') return json({ convs:await slackConvs(c0, users), me:c0.userId, teamId:c0.teamId });
+      if(b === 'history' && m === 'GET'){ const ch = url.searchParams.get('channel'); if(!/^[A-Z0-9]{6,20}$/.test(ch || '')) throw new HttpError(400, 'Conversation inconnue.');
+        const j = await slack(c0.token, 'conversations.history', { channel:ch, limit:'50' });
+        return json({ messages:(j.messages || []).filter(keepMsg).map(x => slackMsg(x, users, c0.userId)).reverse() }) }
+      if(b === 'send' && m === 'POST'){ const inc = await body(); if(!/^[A-Z0-9]{6,20}$/.test(inc.channel || '') || !String(inc.text || '').trim()) throw new HttpError(400, 'Message vide.');
+        const j = await slack(c0.token, 'chat.postMessage', { channel:inc.channel, text:str(inc.text, 4000) }); return json({ ts:j.ts }) }
+      if(b === 'feed' && m === 'GET'){   // messages non lus : messages directs d'abord, puis canaux
+        const convs = await slackConvs(c0, users), pickd = [...convs.filter(x => x.kind === 'im' || x.kind === 'mpim').slice(0, 20), ...convs.filter(x => x.kind === 'channel' || x.kind === 'private').slice(0, 15)];
+        const res = await batches(pickd, 12, async cv => { const info = (await slack(c0.token, 'conversations.info', { channel:cv.id })).channel || {};
+          if(info.unread_count_display === 0) return null;
+          const last = info.last_read && info.last_read !== '0000000000.000000' ? info.last_read : String(Date.now() / 1000 - 86400);
+          if(info.latest && info.latest.ts && info.latest.ts <= last) return null;
+          const h = await slack(c0.token, 'conversations.history', { channel:cv.id, oldest:last, limit:'6' });
+          const msgs = (h.messages || []).filter(x => keepMsg(x) && x.user !== c0.userId).map(x => slackMsg(x, users, c0.userId)).reverse();
+          return msgs.length ? Object.assign({}, cv, { messages:msgs, more:!!h.has_more }) : null });
+        return json({ unread:res.filter(Boolean), teamId:c0.teamId, at:Date.now() });
+      }
+    }
+
+    if(a === 'notion'){
+      const c0 = await token(me, 'notion'), id = String(url.searchParams.get('id') || '').replace(/[^0-9a-f-]/gi, '');
+      if(b === 'search' && m === 'GET'){ const q = str(url.searchParams.get('q'), 200);
+        const j = await notion(c0.token, '/search', Object.assign({ page_size:40, sort:{ direction:'descending', timestamp:'last_edited_time' } }, q ? { query:q } : {}));
+        return json({ results:(j.results || []).map(nItem) }) }
+      if(b === 'page' && m === 'GET' && id){ const pg = await notion(c0.token, '/pages/' + id), budget = { n:300 }, blocks = await nBlocks(c0.token, id, 2, budget);
+        return json(Object.assign(nItem(pg), { blocks, text:str(nText(blocks), 20000), truncated:budget.n <= 0 })) }
+      if(b === 'db' && m === 'GET' && id){ const [db, q] = await Promise.all([notion(c0.token, '/databases/' + id), notion(c0.token, '/databases/' + id + '/query', { page_size:60 })]);
+        const cols = Object.keys(db.properties || {}).filter(k => db.properties[k].type !== 'title').slice(0, 5);
+        return json(Object.assign(nItem(db), { cols, rows:(q.results || []).map(r => Object.assign(nItem(r), { props:cols.map(k => nProp(r.properties[k])) })), more:!!q.has_more })) }
+    }
+    return null;
+  }
+
   /* ---------- routes ---------- */
   async function handle(req){
     const url = new URL(req.url), parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent), m = req.method;
@@ -167,7 +328,10 @@ export function createApi(kv, opts = {}){
       return json({ token:await makeToken(u.id), state:await fullState(u) });
     }
 
+    if(a === 'oauth' && c === 'callback' && m === 'GET') return appsPublic(parts, url);
+
     const me = await auth(req);
+    { const r = await appsRoutes(me, parts, m, url, body); if(r) return r }
 
     if(a === 'state' && m === 'GET') return json(await fullState(me));
 

@@ -210,7 +210,7 @@ const googleFileId = u => { const m = String(u || '').match(/\/(?:d|folders)\/([
    ========================================================= */
 const PageReader = {
   current(){ const m = location.hash.match(/^#\/outil\/([^/]+)/); return m ? DB.tools.find(t => t.id === m[1]) : null },
-  title(){ const t = this.current(); if(t) return t.name; const h = location.hash; return /presse/.test(h) ? 'Revue de presse' : /infos/.test(h) ? 'Infos & agenda' : /admin/.test(h) ? 'Administration' : 'Accueil du Hub' },
+  title(){ const t = this.current(); if(t) return t.name; const h = location.hash; return /^#\/slack/.test(h) ? 'Slack' : /^#\/notion/.test(h) ? 'Notion' : /presse/.test(h) ? 'Revue de presse' : /infos/.test(h) ? 'Infos & agenda' : /admin/.test(h) ? 'Administration' : 'Accueil du Hub' },
   bridge(frame){ // applications Lewys hébergées ailleurs : elles peuvent répondre si elles intègrent le petit script « hub-bridge.js »
     return new Promise(res => {
       const id = 'r' + Date.now(); const on = e => { if(e.source === frame.contentWindow && e.data && e.data.lewysHub === 'page' && e.data.id === id){ done(e.data.text) } };
@@ -312,7 +312,7 @@ Style : français, direct, concret, orienté action. Réponses courtes par défa
       </div>
       <div class="mira-ctx">
         <span class="dotchip ${ok ? 'ok' : 'off'}">Claude</span><span class="dotchip ${g ? 'ok' : 'off'}">${g ? 'Gmail · Drive · Agenda' : Google.linked() ? 'Google à reconnecter' : 'Google non connecté'}</span>
-        <span class="dotchip ctx" title="Mira peut lire cette page">${ic('eye')} ${esc(page)}</span>
+        ${Apps.slackOn() ? '<span class="dotchip ok">Slack</span>' : ''}${Apps.notionOn() ? '<span class="dotchip ok">Notion</span>' : ''}<span class="dotchip ctx" title="Mira peut lire cette page">${ic('eye')} ${esc(page)}</span>
       </div>
       <div class="mira-body" id="miraBody">${!ok ? `
         <div class="mira-empty"><div class="mira-av big">${ic('spark')}</div><h3>Connectez votre Claude</h3>
@@ -344,7 +344,7 @@ Style : français, direct, concret, orienté action. Réponses courtes par défa
     text = String(text || '').trim(); if(!text || this.busy || !Claude.connected()) return;
     this.log.push({ role:'user', text }); this.api.push({ role:'user', content:text });
     this.busy = true; this.ctl = new AbortController(); this.render();
-    const tools = this.TOOLS.filter(t => Google.ready() || !/^(gmail|drive|agenda)_/.test(t.name));
+    const tools = this.TOOLS.filter(t => this.toolAllowed(t));
     try{
       const r = await Claude.run({ system:this.system(), messages:this.api, tools, exec:this.exec, signal:this.ctl.signal,
         onStatus: n => { const s = document.getElementById('miraStatus'); if(s) s.textContent = this.LABELS[n] || 'Mira travaille…' } });
@@ -384,7 +384,9 @@ const Connexions = {
         <p class="note lock">${ic('lock')} <span><b>Lecture seule garantie.</b> Le Hub ne demande à Google que le droit de <b>lire</b> vos mails, fichiers et rendez-vous. Mira ne peut rien envoyer, modifier ni supprimer : Google le refuserait.</span></p>
         <div class="err" id="gErr"></div>
       </div>
+      ${Apps.connHTML()}
       <div class="actions"><button class="btn ghost" id="connClose">Fermer</button></div>`);
+    Apps.wireConn(document.getElementById('modalSlot'), () => { this.open(); Shell.refresh() });
     const $id = i => document.getElementById(i), refresh = () => { this.open(); Shell.refresh() };
     $id('connClose').onclick = closeModal;
     if($id('gCfg')) $id('gCfg').onclick = closeModal;

@@ -263,6 +263,9 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--electrik);cursor:
   </div>
   </div>
 
+  <!-- Notifications (nouveaux messages) -->
+  <div id="notifs" aria-live="polite"></div>
+
   <!-- Mira -->
   <aside id="mira" aria-label="Mira, assistante IA"></aside>
 
@@ -282,6 +285,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--electrik);cursor:
 <script src="hub-remote.js"></script>
 <script src="hub-mira.js"></script>
 <script src="hub-modules.js"></script>
+<script src="hub-apps.js"></script>
 
 <script>
 /* =========================================================
@@ -607,12 +611,12 @@ function renderHome(){
           : `<div class="empty">Aucun outil n'est encore attribué à votre rôle.</div>`}
         </section>
       </div>
-      <div class="home-col"><section id="homeInfos"></section></div>
+      <div class="home-col"><section id="homeInfos"></section><section id="homeSlack"></section></div>
     </div>
     <section class="block" id="homePress"></section>
   </main>`;
   document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>openTool(b.dataset.tool));
-  Tracking.renderHome(); Infos.renderHome(); Press.renderTeaser();
+  Tracking.renderHome(); Infos.renderHome(); SlackMod.renderHome(); Press.renderTeaser();
 }
 function toolCard(t){
   const d=domainOf(t.url), fb=`onerror="this.replaceWith(document.createTextNode('${esc(initials(t.name))}'))"`;
@@ -862,6 +866,8 @@ function route(){
   if(tool){ document.title=tool.name+' · Lewys Hub'; DriveModule.render(tool) }
   else if(h[0]==='admin'){ renderAdmin(h[1]); if(Remote.on) Remote.freshen().then(ch=>{ const n=location.hash.replace(/^#\/?/,'').split('/'); if(ch && n[0]==='admin' && !$('#modalSlot').innerHTML) renderAdmin(n[1]) }) }
   else if(h[0]==='infos'){ document.title='Infos & agenda · Lewys Hub'; Infos.renderPage() }
+  else if(h[0]==='slack'){ document.title='Slack · Lewys Hub'; SlackMod.renderPage(h[1]) }
+  else if(h[0]==='notion'){ document.title='Notion · Lewys Hub'; NotionMod.renderPage() }
   else if(h[0]==='presse'){ document.title='Revue de presse · Lewys Hub'; Press.renderPage() }
   else renderHome();
 }
