@@ -581,7 +581,7 @@ function chartColors(){
   const g = n => cs.getPropertyValue(n).trim();
   return {bar:g('--accent'), n1:g('--n1'), to:g('--gold'), toN1:g('--lavender'), text:g('--muted'), grid:g('--line'), fg:g('--fg')};
 }
-function chartSVG(rows, C){
+function chartSVG(rows, C, noN1){
   const W=960,H=340,ml=64,mr=56,mt=18,mb=44, iw=W-ml-mr, ih=H-mt-mb;
   const maxV = Math.max(1,...rows.map(r=>Math.max(r.tot,r.totN1)));
   const step = niceStep(maxV/4); const top = Math.ceil(maxV/step)*step;
@@ -593,13 +593,13 @@ function chartSVG(rows, C){
   [0,.25,.5,.75,1].forEach(t=>{ s += `<text x="${W-mr+8}" y="${yt(t)+4}" font-size="11" fill="${C.text}">${t*100} %</text>`; });
   rows.forEach((r,i)=>{
     const x0 = ml + i*bw + (bw-gw)/2;
-    s += `<rect x="${x0}" y="${y(r.totN1)}" width="${b1-2}" height="${Math.max(0,mt+ih-y(r.totN1))}" rx="2" fill="${C.n1}"><title>${MONTHS[r.p.m]} N-1 : ${F.eur(r.totN1)}</title></rect>`;
-    s += `<rect x="${x0+b1}" y="${y(r.tot)}" width="${b1-2}" height="${Math.max(0,mt+ih-y(r.tot))}" rx="2" fill="${C.bar}"><title>${MONTHS[r.p.m]} budget : ${F.eur(r.tot)}</title></rect>`;
+    if (!noN1) s += `<rect x="${x0}" y="${y(r.totN1)}" width="${b1-2}" height="${Math.max(0,mt+ih-y(r.totN1))}" rx="2" fill="${C.n1}"><title>${MONTHS[r.p.m]} N-1 : ${F.eur(r.totN1)}</title></rect>`;
+    s += `<rect x="${noN1 ? x0+b1/2 : x0+b1}" y="${y(r.tot)}" width="${b1-2}" height="${Math.max(0,mt+ih-y(r.tot))}" rx="2" fill="${C.bar}"><title>${MONTHS[r.p.m]} budget : ${F.eur(r.tot)}</title></rect>`;
     s += `<text x="${ml+i*bw+bw/2}" y="${H-mb+18}" text-anchor="middle" font-size="11.5" fill="${C.text}">${MSHORT[r.p.m]}</text>`;
     if (i===0||r.p.m===0) s += `<text x="${ml+i*bw+bw/2}" y="${H-mb+33}" text-anchor="middle" font-size="10" fill="${C.text}">${r.p.y}</text>`;
   });
   const line = (k,col,dash) => { const pts=rows.map((r,i)=>`${ml+i*bw+bw/2},${yt(r[k])}`); return `<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" ${dash?'stroke-dasharray="5 4"':''} stroke-linejoin="round"/>` + rows.map((r,i)=>`<circle cx="${ml+i*bw+bw/2}" cy="${yt(r[k])}" r="3.5" fill="${col}"><title>${MONTHS[r.p.m]} ${k==='to'?'TO budget':'TO N-1'} : ${F.pct(r[k])}</title></circle>`).join(''); };
-  s += line('toN1',C.toN1,true) + line('to',C.to,false);
+  s += (noN1 ? '' : line('toN1',C.toN1,true)) + line('to',C.to,false);
   s += `<line x1="${ml}" x2="${W-mr}" y1="${mt+ih}" y2="${mt+ih}" stroke="${C.text}" stroke-width="1"/>`;
   return s + '</svg>';
 }
@@ -877,6 +877,8 @@ function svgToPng(svg, w, h){
 async function buildPDF(b){
   const {jsPDF} = window.jspdf; const doc = new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const {rows,T,Td,out} = tableData(b);
+  // Pas de N-1 saisi : aucune comparaison possible, on retire du PDF tout ce qui s'y rapporte
+  const hasN1 = [T.soldN1, T.hebN1, T.totN1].some(v => isFinite(v) && Math.abs(v) > 0.0001);
   const W=297, M=12;
   const ink=[29,29,27], elec=[55,33,202], gold=[178,137,88], muted=[107,106,115];
   const header = () => {
@@ -897,21 +899,29 @@ async function buildPDF(b){
     doc.setTextColor(...(lead?[255,255,255]:muted)); doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.text(k[0].toUpperCase(),x+4,y+5.5);
     doc.setTextColor(...(lead?[255,255,255]:ink)); doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.text(k[1],x+4,y+12);
     const v=k[2]; doc.setFontSize(8); doc.setFont('helvetica','normal');
-    doc.setTextColor(...(lead?[230,228,255]:(v>0?[30,127,79]:v<0?[180,54,47]:muted))); doc.text('vs N-1 : '+(k[3]?F.pts(v):F.var(v)),x+4,y+16.5);
+    doc.setTextColor(...(lead?[230,228,255]:(v>0?[30,127,79]:v<0?[180,54,47]:muted))); if (hasN1) doc.text('vs N-1 : '+(k[3]?F.pts(v):F.var(v)),x+4,y+16.5);
   });
   y += 24;
   doc.setTextColor(...muted); doc.setFontSize(8);
-  doc.text(`${b.rooms} chambres budget · ${b.roomsN1} chambres N-1 · Extras/nuitée = ${F.dec(b.extrasCoef*100)} % du N-1${b.author?' · Revenue manager : '+b.author:''}`, M, y);
+  doc.text(hasN1 ? `${b.rooms} chambres budget · ${b.roomsN1} chambres N-1 · Extras/nuitée = ${F.dec(b.extrasCoef*100)} % du N-1${b.author?' · Revenue manager : '+b.author:''}` : `${b.rooms} chambres${b.author?' · Revenue manager : '+b.author:''}`, M, y);
   // Table
   const head = [['Indicateur',...rows.map(r=>`${MSHORT[r.p.m]} ${String(r.p.y).slice(2)}`),'Total']];
   const body = []; const meta=[];
+  const N1_SECTS = ['Réalisé N-1','Écarts vs N-1']; let skipSect = false;
+  const noExtras = !(isFinite(T.ext) && Math.abs(T.ext) > 0.0001);
+  const blank = t => { t = String(t==null?'':t).trim(); return t==='' || /^[–—-]$/.test(t) || /NaN|Infinity|undefined/.test(t); };
+  const dropLastEmptySect = () => { if (body.length && meta[meta.length-1]===null){ body.pop(); meta.pop(); } };   // un titre de section resté sans ligne
   out.forEach(o=>{
     if (o.sect==='Commentaires') return;
-    if (o.sect){ body.push([{content:o.sect.toUpperCase(), colSpan:14, styles:{textColor:gold, fontStyle:'bold', fontSize:6.8, fillColor:[255,255,255], cellPadding:{top:1.4,bottom:0.4,left:1.5}}}]); meta.push(null); return; }
-    if (o.comment) return;
+    if (o.sect){ dropLastEmptySect(); skipSect = !hasN1 && N1_SECTS.includes(o.sect); if (skipSect) return; body.push([{content:o.sect.toUpperCase(), colSpan:14, styles:{textColor:gold, fontStyle:'bold', fontSize:6.8, fillColor:[255,255,255], cellPadding:{top:1.4,bottom:0.4,left:1.5}}}]); meta.push(null); return; }
+    if (o.comment || skipSect) return;
     const fmt = v => F[o.f](v).replace(' €','€');
-    body.push([o.label, ...o.cells.map(fmt), fmt(o.total)]); meta.push(o);
+    const line = [...o.cells.map(fmt), fmt(o.total)];
+    if (line.every(blank)) return;                                  // ligne entièrement vide : on ne l'imprime pas
+    if (noExtras && ['extras','ext','trevpar'].includes(o.k)) return;  // aucun extra au budget : lignes à zéro (et TRevPAR identique au RevPAR) retirées
+    body.push([o.label, ...line]); meta.push(o);
   });
+  dropLastEmptySect();
   doc.autoTable({head, body, startY:y+3, margin:{left:M,right:M,top:26}, theme:'plain',
     styles:{font:'helvetica', fontSize:6.2, cellPadding:{top:0.62,bottom:0.62,left:1,right:1}, halign:'right', textColor:ink, lineColor:[227,226,233], lineWidth:{bottom:0.1}},
     headStyles:{fillColor:elec, textColor:[255,255,255], fontStyle:'bold', halign:'right'},
@@ -924,11 +934,11 @@ async function buildPDF(b){
   });
   // Chart + notes page
   doc.addPage(); header();
-  doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text("CA total et taux d'occupation, budget vs N-1", M, 30);
+  doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text(hasN1 ? "CA total et taux d'occupation, budget vs N-1" : "CA total et taux d'occupation du budget", M, 30);
   const C = {bar:'#3721CA', n1:'#C9C7D3', to:'#B28958', toN1:'#ADB7F9', text:'#6B6A73', grid:'#E3E2E9', fg:'#1D1D1B'};
-  try{ const png = await svgToPng(chartSVG(rows,C), 1920, 680); doc.addImage(png,'PNG',M,34,W-2*M,(W-2*M)*680/1920); }catch(e){}
+  try{ const png = await svgToPng(chartSVG(rows,C,!hasN1), 1920, 680); doc.addImage(png,'PNG',M,34,W-2*M,(W-2*M)*680/1920); }catch(e){}
   let ly = 34 + (W-2*M)*680/1920 + 4;
-  const legend=[['CA budget','#3721CA'],['CA N-1','#C9C7D3'],['TO budget','#B28958'],['TO N-1','#ADB7F9']]; let lx=M;
+  const legend=[['CA budget','#3721CA'],['CA N-1','#C9C7D3'],['TO budget','#B28958'],['TO N-1','#ADB7F9']].filter(l => hasN1 || !/N-1/.test(l[0])); let lx=M;
   doc.setFontSize(8); doc.setFont('helvetica','normal');
   legend.forEach(([t,c])=>{ doc.setFillColor(c); doc.rect(lx,ly-2.6,3,3,'F'); doc.setTextColor(...muted); doc.text(t,lx+4.5,ly); lx+=32; });
   ly += 9;

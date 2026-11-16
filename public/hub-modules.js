@@ -534,7 +534,7 @@ function adminConnexions(){
       <li>Dans « Écran de consentement OAuth », choisissez le type <b>Interne</b> (réservé aux comptes @lewys.fr).</li>
       <li>Dans « Identifiants → Créer → ID client OAuth », choisissez « Application Web » et ajoutez dans « Origines JavaScript autorisées » l’adresse du Hub : <code>${esc(origin)}</code></li>
       <li>Copiez l’« ID client » obtenu et collez-le ci-dessus.</li></ol></details>
-    <p class="note lock" style="margin-top:14px">${ic('lock')} <span>Drive et Agenda sont en lecture seule. Pour Gmail, le Hub demande en plus le droit d’enregistrer un brouillon et d’envoyer un mail : il ne sert que lorsque la personne clique elle-même sur « Envoyer ». Mira ne peut rien envoyer, modifier ni supprimer.</span></p>
+    <p class="note lock" style="margin-top:14px">${ic('lock')} <span>Drive et Agenda sont en lecture seule. Pour Gmail, le Hub demande le droit de gérer les mails (lire, rédiger, envoyer, classer, mettre à la corbeille) : il ne sert que lorsque la personne clique elle-même. Mira ne peut rien envoyer, modifier ni supprimer.</span></p>
 
     <h2 style="font-size:20px;margin-top:28px">Claude</h2>
     <p class="note">Chaque personne relie son propre Claude depuis « Mes connexions » (en bas du menu), avec sa clé API personnelle. Rien à régler ici.</p>

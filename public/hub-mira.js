@@ -5,8 +5,8 @@
    - Ce fichier n'envoie à Google que des requêtes de lecture (GET).
    - Mira n'a aucun outil pour écrire, envoyer, modifier ou supprimer.
    Seule exception dans le Hub, hors de Mira : le module Mails (hub-mail.js)
-   peut enregistrer un brouillon et envoyer un mail, uniquement sur un clic
-   de l'utilisateur. Drive et Agenda restent en lecture seule.
+   peut gérer les mails (brouillons, envoi, corbeille, archivage), uniquement
+   sur un clic de l'utilisateur. Drive et Agenda restent en lecture seule.
    ========================================================= */
 
 /* ---------- Réglages propres à chaque profil (dans son navigateur) ---------- */
@@ -102,8 +102,8 @@ const Claude = {
    GOOGLE — Gmail, Drive, Agenda en LECTURE SEULE
    ========================================================= */
 const Google = {
-  SCOPES: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
-  hasCompose(){ return String(UStore.get('googleScopes', '')).includes('gmail.compose') },
+  SCOPES: ['https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
+  hasCompose(){ return String(UStore.get('googleScopes', '')).includes('gmail.modify') },
   tkKey(){ return 'lewysHub.gtok.' + ME.id },
   token(){ try{ const t = JSON.parse(sessionStorage.getItem(this.tkKey())); return t && t.exp > Date.now() + 60000 ? t.tok : null }catch(e){ return null } },
   email(){ return UStore.get('googleEmail', '') },
@@ -382,10 +382,10 @@ const Connexions = {
       <div class="conn">
         <div class="conn-h"><span class="conn-logo"><img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" alt=""></span><div><b>Google</b><small>Gmail, Drive et Agenda, en lecture seule</small></div><span class="dotchip ${gOk ? 'ok' : gLinked ? 'warn' : 'off'}">${gOk ? 'Connecté' : gLinked ? 'À reconnecter' : 'Non connecté'}</span></div>
         ${gLinked ? `<p class="note" style="margin:10px 0">Compte : <b>${esc(Google.email())}</b>${gOk ? '' : ' — la session a expiré (Google la limite à une heure).'}</p>` : ''}
-        ${gOk && !Google.hasCompose() ? `<p class="note" style="color:var(--danger)">L’envoi de mails depuis le Hub n’est pas encore autorisé pour ce compte. <a href="#" id="gMore">Autoriser l’envoi</a></p>` : ''}
+        ${gOk && !Google.hasCompose() ? `<p class="note" style="color:var(--danger)">La gestion de vos mails depuis le Hub n’est pas encore autorisée pour ce compte. <a href="#" id="gMore">Autoriser</a></p>` : ''}
         ${!Google.configured() ? `<p class="note">${isAdmin() ? 'Renseignez d’abord l’identifiant Google du Hub dans <a href="#/admin/connexions" id="gCfg">Administration → Connexions</a>.' : 'La connexion Google n’est pas encore activée : demandez à votre administrateur.'}</p>`
         : `<div style="display:flex;gap:8px;flex-wrap:wrap">${gOk ? '' : `<button class="btn" id="gOn" type="button">${gLinked ? 'Reconnecter Google' : 'Connecter mon compte Google'}</button>`}${gLinked ? '<button class="btn danger" id="gOff" type="button">Déconnecter Google</button>' : ''}</div>`}
-        <p class="note lock">${ic('lock')} <span><b>Mira est en lecture seule.</b> Elle lit vos mails, fichiers et rendez-vous, sans pouvoir rien envoyer, modifier ni supprimer. Le seul droit d’écriture demandé à Google sert au module Mails : enregistrer un brouillon et envoyer un mail, <b>uniquement quand vous cliquez sur « Envoyer »</b>.</span></p>
+        <p class="note lock">${ic('lock')} <span><b>Mira est en lecture seule.</b> Elle lit vos mails, fichiers et rendez-vous, sans pouvoir rien envoyer, modifier ni supprimer. Le droit d’écriture demandé à Google sert au module Mails : brouillons, envoi, corbeille, archivage, <b>uniquement sur votre clic</b>. Aucun mail n’est supprimé définitivement : la corbeille Gmail le garde 30 jours.</span></p>
         <div class="err" id="gErr"></div>
       </div>
       ${Apps.connHTML()}
@@ -410,7 +410,7 @@ const Connexions = {
       $id('cOff').onclick = () => { UStore.set('claudeKey', ''); UStore.set('claudeModel', ''); refresh() };
     }
     if($id('gOn')) $id('gOn').onclick = async () => { $id('gErr').textContent = ''; try{ await Google.connect(); toast('Compte Google connecté'); refresh(); route() }catch(e){ $id('gErr').textContent = e.message } };
-    if($id('gMore')) $id('gMore').onclick = async e => { e.preventDefault(); try{ await Google.connect(); toast('Envoi autorisé'); refresh(); route() }catch(er){ $id('gErr').textContent = er.message } };
+    if($id('gMore')) $id('gMore').onclick = async e => { e.preventDefault(); try{ await Google.connect(); toast('Gestion des mails autorisée'); refresh(); route() }catch(er){ $id('gErr').textContent = er.message } };
     if($id('gOff')) $id('gOff').onclick = () => { Google.disconnect(); refresh(); route() };
   }
 };

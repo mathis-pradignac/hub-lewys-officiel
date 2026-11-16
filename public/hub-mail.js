@@ -9,31 +9,39 @@
    - L'envoi passe par une seule fonction (MailWrite.send), qui exige un clic
      réel sur « Envoyer » puis une confirmation, et refuse tout appel
      déclenché autrement.
-   - Le Hub ne supprime, n'archive et ne modifie aucun mail reçu.
+   - Mettre à la corbeille, archiver, marquer lu ou supprimer un brouillon :
+     uniquement sur un clic de l'utilisateur. Mira n'a aucun de ces outils.
+   - Rien n'est supprimé définitivement, sauf un brouillon (après confirmation) :
+     un mail mis à la corbeille reste récupérable 30 jours dans Gmail.
    ========================================================= */
 const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
-const COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.compose';
+const COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';   // lire, rédiger, envoyer, classer (jamais de suppression définitive d'un mail)
 
 /* ---------- Les SEULES écritures vers Gmail : brouillons et envoi ---------- */
 const MailWrite = {
   allowed(){ return Google.ready() && String(UStore.get('googleScopes', '')).includes(COMPOSE_SCOPE) },
   async call(method, path, body){
-    if(!/^\/drafts(\/send|\/[\w-]+)?$/.test(path)) throw new Error('Opération non autorisée.');   // uniquement les brouillons
+    // uniquement : brouillons (créer, modifier, envoyer, supprimer) et classement d'un fil (corbeille, restaurer, libellés lu / boîte de réception)
+    const ok = (/^\/drafts(\/send)?$/.test(path) && method === 'POST') || (/^\/drafts\/[\w-]+$/.test(path) && (method === 'PUT' || method === 'DELETE')) || (/^\/threads\/[\w-]+\/(trash|untrash|modify)$/.test(path) && method === 'POST');
+    if(!ok) throw new Error('Opération non autorisée.');
     const t = Google.token(); if(!t) throw new Error('Session Google expirée : reconnectez votre compte.');
-    const r = await fetch(GMAIL + path, { method, headers:{ Authorization:'Bearer ' + t, 'content-type':'application/json' }, body:JSON.stringify(body) });
-    if(!r.ok){ let m = 'Gmail : erreur ' + r.status; try{ m = (await r.json()).error.message || m }catch(e){} if(r.status === 403) m = 'Gmail refuse : autorisez l’envoi depuis le Hub dans « Mes connexions ».'; throw new Error(m) }
-    return r.json();
+    const r = await fetch(GMAIL + path, { method, headers:{ Authorization:'Bearer ' + t, 'content-type':'application/json' }, body:body ? JSON.stringify(body) : undefined });
+    if(!r.ok){ let m = 'Gmail : erreur ' + r.status; try{ m = (await r.json()).error.message || m }catch(e){} if(r.status === 403) m = 'Gmail refuse : autorisez la gestion de vos mails depuis le Hub dans « Mes connexions ».'; throw new Error(m) }
+    return r.status === 204 ? {} : r.json().catch(() => ({}));
   },
   saveDraft(draftId, raw, threadId){ const message = threadId ? { raw, threadId } : { raw }; return draftId ? this.call('PUT', '/drafts/' + draftId, { message }) : this.call('POST', '/drafts', { message }) },
-  /* Envoi : seulement dans la foulée d'un clic réel de l'utilisateur */
-  arm(ev){   // appelé dans le clic « Oui, envoyer » : délivre une autorisation à usage unique, valable une minute
-    if(!ev || !ev.isTrusted || (navigator.userActivation && !navigator.userActivation.isActive)) throw new Error('Envoi refusé : un mail ne part que sur votre clic « Envoyer ».');
+  /* Envoyer, mettre à la corbeille, supprimer un brouillon : seulement dans la foulée d'un clic réel de l'utilisateur */
+  arm(ev){   // appelé dans le clic de l'utilisateur : délivre une autorisation à usage unique, valable une minute
+    if(!ev || !ev.isTrusted || (navigator.userActivation && !navigator.userActivation.isActive)) throw new Error('Action refusée : elle ne se fait que sur votre clic.');
     return MailWrite._gesture = { at:Date.now() };
   },
-  send(draftId, gesture){
-    if(!gesture || gesture !== MailWrite._gesture || Date.now() - gesture.at > 60000) throw new Error('Envoi refusé : un mail ne part que sur votre clic « Envoyer ».');
-    MailWrite._gesture = null; return this.call('POST', '/drafts/send', { id:draftId });
-  },
+  use(gesture){ if(!gesture || gesture !== MailWrite._gesture || Date.now() - gesture.at > 60000) throw new Error('Action refusée : elle ne se fait que sur votre clic.'); MailWrite._gesture = null },
+  send(draftId, gesture){ this.use(gesture); return this.call('POST', '/drafts/send', { id:draftId }) },
+  trash(threadId, gesture){ this.use(gesture); return this.call('POST', '/threads/' + threadId + '/trash') },
+  deleteDraft(draftId, gesture){ this.use(gesture); return this.call('DELETE', '/drafts/' + draftId) },
+  untrash(threadId){ return this.call('POST', '/threads/' + threadId + '/untrash') },                       // restaurer : sans risque
+  labels(threadId, add, remove){ const okL = l => ['UNREAD', 'INBOX'].includes(l);                           // lu / non lu, archiver / remettre en boîte de réception
+    return this.call('POST', '/threads/' + threadId + '/modify', { addLabelIds:(add || []).filter(okL), removeLabelIds:(remove || []).filter(okL) }) },
   _gesture:null
 };
 
@@ -75,10 +83,12 @@ const MailUtil = {
 };
 
 const MailMod = {
-  threads:null, drafts:{}, filter:'todo', cur:null, loadedAt:0, st:null,
+  threads:null, drafts:{}, filter:'todo', box:'inbox', q:'', todo:0, cur:null, loadedAt:0, st:null,
+  BOXES:{ inbox:['Réception', 'in:inbox newer_than:14d -category:promotions -category:social'], sent:['Envoyés', 'in:sent'], drafts:['Brouillons', 'in:draft'], trash:['Corbeille', 'in:trash'] },
+  setBox(b, q){ this.box = b; this.q = q || ''; this.threads = null; this.cur = null; this.st = null },
   sig(){ return UStore.get('mailSig', '') },
   setSig(html){ html = MailUtil.cleanHtml(html); UStore.set('mailSig', html); if(Remote.on) Remote.req('PUT', '/prefs', { mailSig:html }).catch(() => {}) },
-  count(){ return this.threads ? this.threads.filter(t => t.kind === 'todo').length : 0 },
+  count(){ return this.todo },
   /* ----- Chargement : fils récents de la boîte de réception + brouillons ----- */
   async load(force){
     if(!Google.ready()) return null;
@@ -86,23 +96,25 @@ const MailMod = {
     if(this._l) return this._l;
     this._l = (async () => {
       const me = Google.email().toLowerCase(), H = 'From,To,Cc,Subject,Date,Reply-To,Message-ID,References,List-Unsubscribe,Precedence'.split(',').map(h => '&metadataHeaders=' + h).join('');
-      const [tl, dl] = await Promise.all([Google.get(GMAIL + '/threads?maxResults=30&q=' + encodeURIComponent('in:inbox newer_than:14d -category:promotions -category:social')), Google.get(GMAIL + '/drafts?maxResults=60').catch(() => ({}))]);
+      const [tl, dl] = await Promise.all([Google.get(GMAIL + '/threads?maxResults=30&q=' + encodeURIComponent(this.box === 'search' ? this.q : this.BOXES[this.box][1])), Google.get(GMAIL + '/drafts?maxResults=60').catch(() => ({}))]);
       this.drafts = {}; (dl.drafts || []).forEach(d => { if(d.message && d.message.threadId) this.drafts[d.message.threadId] = d.id });
       const full = await Promise.all((tl.threads || []).map(t => Google.get(GMAIL + '/threads/' + t.id + '?format=metadata' + H).catch(() => null)));
       this.threads = full.filter(Boolean).map(t => {
-        const msgs = (t.messages || []).filter(m => !(m.labelIds || []).includes('DRAFT')), last = msgs[msgs.length - 1]; if(!last) return null;
+        const msgs = (t.messages || []).filter(m => !(m.labelIds || []).includes('DRAFT')), only = !msgs.length, last = msgs[msgs.length - 1] || (t.messages || [])[0]; if(!last) return null;
         const h = n => Google.hdr(last, n), from = h('From'), mine = (last.labelIds || []).includes('SENT') || MailUtil.email(from) === me;
+        if(only) return { id:t.id, from, name:'À : ' + (MailUtil.list(h('To')).map(a => MailUtil.name(a)).join(', ') || '(pas de destinataire)'), subject:h('Subject') || '(sans objet)', snippet:last.snippet || '', date:+last.internalDate, unread:false, n:0, draft:this.drafts[t.id] || null, kind:'draftonly' };
         const auto = !!h('List-Unsubscribe') || /bulk|list|junk/i.test(h('Precedence')) || /no-?reply|ne-?pas-?repondre|notification|mailer-daemon|newsletter|donotreply/i.test(from);
         const toMe = MailUtil.list(h('To')).some(a => MailUtil.email(a) === me);
         return { id:t.id, from, name:MailUtil.name(from), subject:h('Subject') || '(sans objet)', snippet:last.snippet || '', date:+last.internalDate, unread:(last.labelIds || []).includes('UNREAD'), n:msgs.length,
           draft:this.drafts[t.id] || null, kind: mine ? 'done' : auto ? 'auto' : toMe ? 'todo' : 'other' };
       }).filter(Boolean).sort((a, b) => b.date - a.date);
+      if(this.box === 'inbox') this.todo = this.threads.filter(t => t.kind === 'todo').length;
       this.loadedAt = Date.now(); return this.threads;
     })();
     try{ return await this._l } finally{ this._l = null }
   },
-  async refreshCount(){ try{ await this.load(); Shell.refresh() }catch(e){} },
-  shown(){ const f = this.filter, t = this.threads || []; return f === 'todo' ? t.filter(x => x.kind === 'todo') : f === 'drafts' ? t.filter(x => x.draft) : f === 'other' ? t.filter(x => x.kind === 'other') : t },
+  async refreshCount(){ try{ if(this.box !== 'inbox') this.setBox('inbox'); await this.load(); Shell.refresh() }catch(e){} },
+  shown(){ const f = this.filter, t = this.threads || []; if(this.box !== 'inbox') return t; return f === 'todo' ? t.filter(x => x.kind === 'todo') : f === 'drafts' ? t.filter(x => x.draft) : f === 'other' ? t.filter(x => x.kind === 'other') : t },
 
   /* ----- Page ----- */
   async renderPage(id){
@@ -118,18 +130,40 @@ const MailMod = {
     if(!location.hash.startsWith('#/mails')) return;
     if(id === 'nouveau'){ this.cur = null; this.paintList(); return this.openNew() }
     this.cur = this.threads.find(t => t.id === id) || (id ? { id, subject:'', name:'', kind:'other' } : this.shown()[0]) || null;
-    this.paintList(); if(this.cur) this.openThread(); Shell.refresh();
+    this.paintList(); if(this.cur) this.openThread(); Shell.refresh(); this.auto();
+  },
+  /* La liste se recharge seule toutes les 2 minutes (et au retour sur l'onglet), sans toucher au texte en cours */
+  auto(){
+    clearInterval(this._a);
+    const tick = async () => {
+      if(!location.hash.startsWith('#/mails') || !ME){ clearInterval(this._a); return }
+      if(document.hidden || !Google.ready() || document.getElementById('modalSlot').innerHTML) return;
+      try{ await this.load(true) }catch(e){ return }
+      if(!location.hash.startsWith('#/mails')) return;
+      this.paintList(); Shell.refresh();
+      const st = this.st, txt = document.getElementById('maText');   // un brouillon vient d'arriver pour le mail ouvert, et rien n'a été saisi : on l'affiche
+      if(st && st.threadId && !st.draftId && this.drafts[st.threadId] && !st.dirty && txt && !txt.value.trim() && this.cur && this.cur.id === st.threadId) this.openThread();
+    };
+    this._a = setInterval(tick, 120000);
+    if(!this._vis){ this._vis = true; document.addEventListener('visibilitychange', () => { if(!document.hidden && location.hash.startsWith('#/mails') && Date.now() - this.loadedAt > 60000) tick() }) }
   },
   paintList(){
     const el = document.getElementById('maList'); if(!el || !this.threads) return;
-    const n = k => k === 'todo' ? this.threads.filter(x => x.kind === 'todo').length : k === 'drafts' ? this.threads.filter(x => x.draft).length : '';
+    const inbox = this.box === 'inbox', n = k => k === 'todo' ? this.threads.filter(x => x.kind === 'todo').length : k === 'drafts' ? this.threads.filter(x => x.draft).length : '';
     const chip = (k, l) => `<button class="tab ${this.filter === k ? 'on' : ''}" data-mf="${k}">${l}${n(k) !== '' ? ` <em>${n(k)}</em>` : ''}</button>`;
-    const list = this.shown();
-    el.innerHTML = `<div class="ma-tabs">${chip('todo', 'À répondre')}${chip('drafts', 'Brouillons prêts')}${chip('other', 'En copie')}${chip('all', 'Tous')}</div>` +
-      (list.map(t => `<a class="ma-row ${this.cur && this.cur.id === t.id ? 'on' : ''} ${t.unread ? 'un' : ''}" href="#/mails/${t.id}"><span class="ma-top"><b>${esc(t.name)}</b><time>${timeAgo(t.date)}</time></span><span class="ma-sub">${esc(t.subject)}</span><span class="ma-snip">${esc(t.snippet.slice(0, 90))}</span>${t.draft ? '<em class="ma-tag ok">Brouillon prêt</em>' : t.kind === 'done' ? '<em class="ma-tag">Répondu</em>' : t.kind === 'auto' ? '<em class="ma-tag">Automatique</em>' : ''}</a>`).join('')
-      || `<div class="empty">${this.filter === 'todo' ? 'Aucun mail en attente de réponse.' : 'Aucun mail ici.'}</div>`);
+    const list = this.shown(), tag = t => t.draft && this.box !== 'drafts' ? '<em class="ma-tag ok">Brouillon prêt</em>' : !inbox ? '' : t.kind === 'done' ? '<em class="ma-tag">Répondu</em>' : t.kind === 'auto' ? '<em class="ma-tag">Automatique</em>' : '';
+    el.innerHTML = `<form class="pr-search ma-search" id="maSearch">${ic('search')}<input type="search" id="maQ" placeholder="Rechercher dans mes mails…" value="${esc(this.box === 'search' ? this.q : '')}"></form>
+      <div class="ma-boxes">${Object.keys(this.BOXES).map(b => `<button class="${this.box === b ? 'on' : ''}" data-box="${b}">${this.BOXES[b][0]}</button>`).join('')}</div>
+      ${inbox ? `<div class="ma-tabs">${chip('todo', 'À répondre')}${chip('drafts', 'Brouillons prêts')}${chip('other', 'En copie')}${chip('all', 'Tous')}</div>` : this.box === 'search' ? `<p class="small" style="margin:4px 6px 8px">Résultats pour « ${esc(this.q)} »</p>` : ''}` +
+      (list.map(t => `<a class="ma-row ${this.cur && this.cur.id === t.id ? 'on' : ''} ${t.unread ? 'un' : ''}" href="#/mails/${t.id}"><span class="ma-top"><b>${esc(t.name)}</b><time>${timeAgo(t.date)}</time></span><span class="ma-sub">${esc(t.subject)}</span><span class="ma-snip">${esc(t.snippet.slice(0, 90))}</span>${tag(t)}</a>`).join('')
+      || `<div class="empty">${inbox && this.filter === 'todo' ? 'Aucun mail en attente de réponse.' : this.box === 'trash' ? 'La corbeille est vide.' : 'Aucun mail ici.'}</div>`);
     el.querySelectorAll('[data-mf]').forEach(b => b.onclick = () => { this.filter = b.dataset.mf; this.paintList() });
+    el.querySelectorAll('[data-box]').forEach(b => b.onclick = () => { this.setBox(b.dataset.box); if(location.hash === '#/mails') this.renderPage(); else location.hash = '#/mails' });
+    document.getElementById('maSearch').onsubmit = e => { e.preventDefault(); const v = document.getElementById('maQ').value.trim(); this.setBox(v ? 'search' : 'inbox', v); if(location.hash === '#/mails') this.renderPage(); else location.hash = '#/mails' };
   },
+  /* Après une action (corbeille, archivage…) : on retire le fil de la liste et on revient à la liste */
+  drop(id){ if(this.threads) this.threads = this.threads.filter(x => x.id !== id); if(this.box === 'inbox') this.todo = (this.threads || []).filter(t => t.kind === 'todo').length; this.cur = null; this.st = null; Shell.refresh();
+    if(location.hash === '#/mails') this.renderPage(); else location.hash = '#/mails' },
   async openThread(){
     const t = this.cur, el = document.getElementById('maMain'), me = Google.email().toLowerCase();
     el.innerHTML = `<div class="empty" style="margin:auto"><span class="dots"><i></i><i></i><i></i></span> Ouverture…</div>`;
@@ -138,19 +172,27 @@ const MailMod = {
     catch(e){ el.innerHTML = `<div class="empty" style="margin:auto">${esc(e.message)}</div>`; return }
     if(this.cur !== t || !el.isConnected) return;
     const msgs = (th.messages || []).filter(m => !(m.labelIds || []).includes('DRAFT')).map(m => ({ from:Google.hdr(m, 'From'), to:Google.hdr(m, 'To'), cc:Google.hdr(m, 'Cc'), replyTo:Google.hdr(m, 'Reply-To'), subject:Google.hdr(m, 'Subject'), mid:Google.hdr(m, 'Message-ID') || Google.hdr(m, 'Message-Id'), refs:Google.hdr(m, 'References'), date:+m.internalDate, text:MailUtil.body(m.payload) || m.snippet || '', mine:(m.labelIds || []).includes('SENT') }));
-    const last = [...msgs].reverse().find(m => !m.mine) || msgs[msgs.length - 1], subj = (msgs[0] && msgs[0].subject) || t.subject || '(sans objet)';
+    const last = [...msgs].reverse().find(m => !m.mine) || msgs[msgs.length - 1], subj = (msgs[0] && msgs[0].subject) || (dr && Google.hdr(dr.message, 'Subject')) || t.subject || '(sans objet)';
+    const lab = new Set(); (th.messages || []).forEach(m => (m.labelIds || []).forEach(l => lab.add(l))); const inTrash = lab.has('TRASH'), inInbox = lab.has('INBOX'), can = MailWrite.allowed();
+    if(lab.has('UNREAD') && can && !inTrash){ MailWrite.labels(t.id, [], ['UNREAD']).then(() => { t.unread = false; this.paintList() }).catch(() => {}) }   // ouvrir un mail le marque comme lu, comme dans Gmail
     const others = last ? [...MailUtil.list(last.to), ...MailUtil.list(last.cc)].filter(a => { const e = MailUtil.email(a); return e !== me && e !== MailUtil.email(last.replyTo || last.from) }) : [];
     const sigText = MailUtil.htmlText(this.sig());
     const st = this.st = { threadId:t.id, draftId:dr ? dr.id : null, last, others, dirty:false,
       to: dr ? Google.hdr(dr.message, 'To') || (last ? last.replyTo || last.from : '') : (last ? last.replyTo || last.from : ''), cc: dr ? Google.hdr(dr.message, 'Cc') : '',
-      subject: dr && Google.hdr(dr.message, 'Subject') ? Google.hdr(dr.message, 'Subject') : (/^re\s*:/i.test(subj) ? subj : 'Re: ' + subj),
+      subject: dr && Google.hdr(dr.message, 'Subject') ? Google.hdr(dr.message, 'Subject') : !msgs.length ? '' : (/^re\s*:/i.test(subj) ? subj : 'Re: ' + subj),
       text: dr ? MailUtil.strip(MailUtil.body(dr.message.payload), sigText) : '', msgs };
-    el.innerHTML = `<div class="sl-head"><b>${esc(subj)}</b><span class="spacer"></span><a class="btn ghost sm" href="https://mail.google.com/mail/?authuser=${encodeURIComponent(Google.email())}#inbox/${esc(t.id)}" target="_blank" rel="noopener">Dans Gmail ${ic('ext')}</a></div>
+    el.innerHTML = `<div class="sl-head"><b>${esc(subj)}</b><span class="spacer"></span>${!can || !msgs.length ? '' : inTrash ? `<button class="btn ghost sm" id="maRestore">Restaurer</button>` : `<button class="btn ghost sm" id="maUnread" title="Marquer comme non lu">Non lu</button>${inInbox ? `<button class="btn ghost sm" id="maArch" title="Retirer de la boîte de réception, sans supprimer">Archiver</button>` : ''}<button class="btn danger sm" id="maTrash" title="Mettre à la corbeille (récupérable 30 jours)">${ic('trash')} Corbeille</button>`}<a class="btn ghost sm" href="https://mail.google.com/mail/?authuser=${encodeURIComponent(Google.email())}#inbox/${esc(t.id)}" target="_blank" rel="noopener">Dans Gmail ${ic('ext')}</a></div>
       <div class="ma-scroll" id="maScroll">
         ${msgs.length > 3 ? `<button class="btn ghost sm" id="maOlder" style="align-self:center">Afficher les ${msgs.length - 3} messages précédents</button>` : ''}
         ${msgs.map((m, i) => `<article class="ma-msg ${m.mine ? 'mine' : ''} ${i < msgs.length - 3 ? 'hidden old' : ''}"><header><span class="ml-av">${esc(initials(MailUtil.name(m.from)))}</span><div><b>${esc(MailUtil.name(m.from))}</b><small>à ${esc(MailUtil.list(m.to).map(a => MailUtil.name(a)).slice(0, 4).join(', ') || '—')}${m.cc ? ' · cc ' + esc(MailUtil.list(m.cc).map(a => MailUtil.name(a)).slice(0, 3).join(', ')) : ''}</small></div><time>${new Date(m.date).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</time></header><div class="ma-body">${esc(m.text.length > 6000 ? m.text.slice(0, 6000) + '\n[… suite dans Gmail]' : m.text)}</div></article>`).join('')}
-        ${this.composerHTML(st, dr ? 'Brouillon trouvé dans Gmail' : 'Votre réponse')}
+        ${inTrash ? '<p class="note" style="text-align:center">Ce fil est dans la corbeille. Restaurez-le pour y répondre.</p>' : this.composerHTML(st, !msgs.length ? 'Brouillon' : dr ? 'Brouillon trouvé dans Gmail' : 'Votre réponse')}
       </div>`;
+    const on = (id, fn) => { const b = document.getElementById(id); if(b) b.onclick = async ev => { b.disabled = true; try{ await fn(ev) }catch(e){ b.disabled = false; toast(e.message) } } };
+    on('maUnread', async () => { await MailWrite.labels(t.id, ['UNREAD'], []); t.unread = true; toast('Marqué comme non lu'); this.cur = null; this.st = null; if(location.hash === '#/mails') this.renderPage(); else location.hash = '#/mails' });
+    on('maArch', async () => { await MailWrite.labels(t.id, [], ['INBOX']); toast('Archivé'); this.drop(t.id) });
+    on('maRestore', async () => { await MailWrite.untrash(t.id); toast('Restauré'); this.drop(t.id) });
+    on('maTrash', async ev => { const g = MailWrite.arm(ev); await MailWrite.trash(t.id, g); delete this.drafts[t.id]; this.undoToast('Mis à la corbeille', async () => { await MailWrite.untrash(t.id); this.threads = null; toast('Restauré'); if(location.hash.startsWith('#/mails')) this.renderPage() }); this.drop(t.id) });
+    if(inTrash) return;
     const o = document.getElementById('maOlder'); if(o) o.onclick = () => { el.querySelectorAll('.ma-msg.old').forEach(x => x.classList.remove('hidden')); o.remove() };
     this.wireComposer(el, st); const sc = document.getElementById('maScroll'); sc.scrollTop = sc.scrollHeight;
   },
@@ -169,8 +211,8 @@ const MailMod = {
         <form class="ma-ask" id="maAsk"><input class="input" id="maAskIn" placeholder="Autre consigne pour Mira : « propose un créneau jeudi », « ajoute le tarif »…"><button class="btn ghost sm">Reformuler</button></form><p class="small" id="maMiraMsg"></p></div>
       <div class="ma-sig"><div class="ma-sigh"><label><input type="checkbox" id="maSigOn" ${sig ? 'checked' : 'disabled'}> Ajouter ma signature</label><a href="#" id="maSigEdit">${sig ? 'Modifier' : 'Créer ma signature'}</a></div>${sig ? `<div class="ma-sigp">${sig}</div>` : '<p class="small">Aucune signature enregistrée dans le Hub.</p>'}</div>
       ${st.last ? '<p class="small">Le message d’origine sera cité sous votre réponse, comme dans Gmail.</p>' : ''}
-      ${ok ? '' : `<p class="note" style="color:var(--danger)">L’enregistrement et l’envoi ne sont pas encore autorisés pour votre compte Google. <a href="#" id="maGrant">Autoriser l’envoi depuis le Hub</a></p>`}
-      <div class="ma-actions"><span class="small">${ic('lock')} Rien ne part sans votre clic sur « Envoyer ».</span><span class="spacer"></span><button type="button" class="btn ghost" id="maSave" ${ok ? '' : 'disabled'}>Enregistrer le brouillon</button><button type="button" class="btn" id="maSend" ${ok ? '' : 'disabled'}>${ic('send')} Envoyer</button></div></section>`;
+      ${ok ? '' : `<p class="note" style="color:var(--danger)">La gestion de vos mails (brouillons, envoi, corbeille) n’est pas encore autorisée pour votre compte Google. <a href="#" id="maGrant">Autoriser depuis le Hub</a></p>`}
+      <div class="ma-actions"><span class="small">${ic('lock')} Rien ne part sans votre clic.</span><span class="spacer"></span>${st.draftId && ok ? `<button type="button" class="btn danger" id="maDel">${ic('trash')} Supprimer le brouillon</button>` : ''}<button type="button" class="btn ghost" id="maSave" ${ok ? '' : 'disabled'}>Enregistrer le brouillon</button><button type="button" class="btn" id="maSend" ${ok ? '' : 'disabled'}>${ic('send')} Envoyer</button></div></section>`;
   },
   read(){ const v = i => document.getElementById(i).value.trim(), st = this.st; st.to = v('maTo'); st.cc = v('maCc'); st.subject = v('maSubj'); st.text = document.getElementById('maText').value.replace(/\s+$/, ''); st.sigOn = document.getElementById('maSigOn').checked; return st },
   build(st){
@@ -197,7 +239,20 @@ const MailMod = {
     if($i('maAll')) $i('maAll').onclick = () => { $i('maCc').value = st.others.join(', '); $i('maAll').remove() };
     $i('maSigEdit').onclick = e => { e.preventDefault(); this.read(); this.sigModal() };
     if($i('maGrant')) $i('maGrant').onclick = async e => { e.preventDefault(); const keep = this.read(); try{ await Google.connect(); toast('Envoi autorisé'); const id = keep.threadId; await this.renderPage(id || 'nouveau'); if(this.st && !this.st.text && keep.text){ document.getElementById('maText').value = keep.text } }catch(er){ toast(er.message) } };
-    $i('maSave').onclick = () => this.save(false);
+    $i('maSave').onclick = async () => { const had = st.draftId; if(await this.save(false) && !had) this.rerenderComposer() };
+    /* SUPPRESSION D'UN BROUILLON : définitive, donc confirmée */
+    if($i('maDel')) $i('maDel').onclick = () => {
+      openModal(`<div class="eyebrow">Confirmation</div><h2>Supprimer ce brouillon ?</h2><p class="note" style="margin-top:10px">Le brouillon sera supprimé définitivement de Gmail : il ne pourra pas être récupéré. ${st.msgs.length ? 'Le mail reçu, lui, n’est pas touché.' : ''}</p>
+        <div class="err" id="maDelErr"></div><div class="actions"><button class="btn ghost" id="maDelNo">Annuler</button><button class="btn danger" id="maDelYes">${ic('trash')} Oui, supprimer</button></div>`);
+      document.getElementById('maDelNo').onclick = closeModal;
+      document.getElementById('maDelYes').onclick = async ev => {
+        try{ const g = MailWrite.arm(ev); await MailWrite.deleteDraft(st.draftId, g); closeModal(); toast('Brouillon supprimé');
+          if(st.threadId) delete this.drafts[st.threadId]; const t = this.threads && this.threads.find(x => x.id === st.threadId);
+          if(!st.msgs.length) return this.drop(st.threadId);
+          if(t) t.draft = null; st.draftId = null; st.text = ''; st.dirty = false; this.paintList(); this.rerenderComposer() }
+        catch(e){ document.getElementById('maDelErr').textContent = e.message }
+      };
+    };
     /* ENVOI : clic sur « Envoyer », puis confirmation explicite */
     $i('maSend').onclick = () => {
       const s = this.read(), err = this.check(s); if(err) return toast(err);
@@ -275,5 +330,7 @@ Sortie : UNIQUEMENT le corps du mail, en texte simple, dans la langue du corresp
     document.getElementById('sgNo').onclick = closeModal;
     document.getElementById('sgOk').onclick = () => { this.setSig(MailUtil.htmlText(ed.innerHTML) || ed.querySelector('img') ? ed.innerHTML : ''); toast('Signature enregistrée'); back() };
   },
+  undoToast(text, undo){ const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `${esc(text)} <button class="toast-undo">Annuler</button>`; document.body.appendChild(t);
+    t.querySelector('button').onclick = async () => { t.remove(); try{ await undo() }catch(e){ toast(e.message) } }; setTimeout(() => t.remove(), 8000) },
   rerenderComposer(){ const st = this.st, old = document.querySelector('.ma-comp'); if(!st || !old) return; const tmp = document.createElement('div'); tmp.innerHTML = this.composerHTML(st, old.querySelector('.eyebrow').textContent); old.replaceWith(tmp.firstElementChild); this.wireComposer(document.getElementById('maMain'), st) }
 };
