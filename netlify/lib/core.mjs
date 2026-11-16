@@ -80,7 +80,7 @@ export function createApi(kv, opts = {}){
   async function fullState(me){
     const h = await hub(), tr = await getv('tracking', {}), su = await suivi(), notes = await getv('notes/' + me.id, []);
     const mine = {}; Object.keys(tr).forEach(k => { if(isAdmin(me) || k.endsWith('|' + me.id)) mine[k] = tr[k] });
-    return { me:me.id, hub:pubHub(h, me), tracking:mine, suivi:{ data:su.data, v:su.v }, notes, conn:pubConn(await getv('conn/' + me.id, {}), await getv('integrations', {})), now:Date.now() };
+    return { me:me.id, hub:pubHub(h, me), tracking:mine, suivi:{ data:su.data, v:su.v }, notes, prefs:await getv('prefs/' + me.id, {}), conn:pubConn(await getv('conn/' + me.id, {}), await getv('integrations', {})), now:Date.now() };
   }
 
   /* ---------- Suivi client : fusion sans écraser le travail des collègues ---------- */
@@ -380,6 +380,10 @@ export function createApi(kv, opts = {}){
         await suivi();
         const next = await update('suivi', cur => mergeSuivi(cur, inc.data, me, +inc.since || 0, inc.base));
         return json({ data:next.data, v:next.v, now:Date.now() }) }
+    }
+
+    if(a === 'prefs' && m === 'PUT'){   // réglages personnels (signature des mails)
+      const inc = await body(); await update('prefs/' + me.id, cur => { if(inc.mailSig !== undefined) cur.mailSig = str(inc.mailSig, 80000); return cur }, {}); return json({ ok:true });
     }
 
     if(a === 'notes' && m === 'PUT'){
