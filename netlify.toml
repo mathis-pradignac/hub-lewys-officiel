@@ -1,4 +1,3 @@
-# Lewys Hub — réglages Netlify (rien à saisir à la main dans Netlify)
 [build]
   publish = "public"
   functions = "netlify/functions"
@@ -6,11 +5,10 @@
 [functions]
   node_bundler = "esbuild"
 
-# Les pages se mettent à jour dès qu'une nouvelle version est publiée
 [[headers]]
   for = "/*"
   [headers.values]
-    Cache-Control = "no-cache"
+    # Autorise l'affichage intégré (iframe) uniquement dans l'application elle-même et dans le Lewys Hub
+    Content-Security-Policy = "frame-ancestors 'self' https://lewys-hub-officiel.netlify.app"
     X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "same-origin"
