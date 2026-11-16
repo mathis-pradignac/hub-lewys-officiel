@@ -286,6 +286,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--electrik);cursor:
 <script src="hub-mira.js"></script>
 <script src="hub-modules.js"></script>
 <script src="hub-apps.js"></script>
+<script src="hub-mail.js"></script>
 
 <script>
 /* =========================================================
@@ -866,6 +867,7 @@ function route(){
   if(tool){ document.title=tool.name+' · Lewys Hub'; DriveModule.render(tool) }
   else if(h[0]==='admin'){ renderAdmin(h[1]); if(Remote.on) Remote.freshen().then(ch=>{ const n=location.hash.replace(/^#\/?/,'').split('/'); if(ch && n[0]==='admin' && !$('#modalSlot').innerHTML) renderAdmin(n[1]) }) }
   else if(h[0]==='infos'){ document.title='Infos & agenda · Lewys Hub'; Infos.renderPage() }
+  else if(h[0]==='mails'){ document.title='Mails · Lewys Hub'; MailMod.renderPage(h[1]) }
   else if(h[0]==='slack'){ document.title='Slack · Lewys Hub'; SlackMod.renderPage(h[1]) }
   else if(h[0]==='presse'){ document.title='Revue de presse · Lewys Hub'; Press.renderPage() }
   else renderHome();

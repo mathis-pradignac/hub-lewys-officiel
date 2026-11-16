@@ -35,12 +35,12 @@ const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() ==
 const Shell = {
   start(){
     Mira.load(); Tracking.dismissed = false; this.refresh();
-    clearInterval(this._t); let n = 0; this._t = setInterval(() => { Tracking.check(); if(Remote.on && ++n % 2 === 0) Remote.pull() }, 60000);
+    clearInterval(this._t); let n = 0; this._t = setInterval(() => { Tracking.check(); if(Remote.on && ++n % 2 === 0) Remote.pull(); if(n % 5 === 0 && !location.hash.startsWith('#/mails')) MailMod.refreshCount() }, 60000);
     Suivi.ensure().then(() => { if(!location.hash.replace(/^#\/?/, '')) Tracking.renderHome(); setTimeout(() => Tracking.check(), 600) });
     document.getElementById('fabMira').onclick = () => Mira.toggle();
     document.getElementById('burger').onclick = () => document.getElementById('side').classList.toggle('open');
     document.getElementById('navConnex').onclick = () => Connexions.open();
-    SlackMod.start();
+    SlackMod.start(); MailMod.threads = null; MailMod.st = null; setTimeout(() => MailMod.refreshCount(), 2500);
   },
   stop(){ clearInterval(this._t); SlackMod.stop(); Mira.close(); if(Mira.ctl) Mira.ctl.abort() },
   refresh(){
@@ -53,6 +53,7 @@ const Shell = {
       link('#/', 'home', 'Accueil', todo ? '<i class="side-dot" title="Heures du jour à saisir"></i>' : '') +
       `<button class="side-link" id="sideMira">${ic('spark')}<span>Mira</span><em class="side-tag">IA</em></button>` +
       link('#/infos', 'calendar', 'Infos & agenda') + link('#/presse', 'news', 'Revue de presse') +
+      link('#/mails', 'mail', 'Mails', MailMod.count() ? `<em class="side-n" title="Mails en attente de réponse">${MailMod.count()}</em>` : '') +
       `<a class="side-link ${hash === '#/slack' || (hash.startsWith('#/slack') && !SlackMod.unread.some(u => hash === '#/slack/' + u.id)) ? 'on' : ''}" href="#/slack"><i class="side-ico"><img src="${APP_ICON.slack}" alt=""></i><span>Slack</span>${SlackMod.count() ? `<em class="side-n" title="Messages non lus">${SlackMod.count()}</em>` : ''}</a>` +
       SlackMod.unread.slice(0, 6).map(u => `<a class="side-link side-sub" href="#/slack/${u.id}" title="${esc(plainMd(u.messages[u.messages.length - 1].text).slice(0, 120))}"><i class="side-bul"></i><span>${u.kind === 'im' || u.kind === 'mpim' ? '' : '# '}${esc(u.name)}</span><em class="side-n">${u.messages.length}${u.more ? '+' : ''}</em></a>`).join('') +
       cats.map(c => `<div class="side-cat" style="--vc:${voletOf(c).color === '#1D1D1B' ? '#fff' : voletOf(c).color === '#3721CA' ? '#ADB7F9' : '#D9B68E'}">${esc(c)}</div>` +
@@ -240,7 +241,7 @@ const Infos = {
   time(e){ return e.journee ? 'Journée' : new Date(e.debut).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) },
   eventRow(e){ return `<a class="ev" href="${esc(e.lien || '#')}" target="_blank" rel="noopener"><span class="ev-t">${this.time(e)}</span><span class="ev-b"><b>${esc(e.titre)}</b>${e.lieu || e.participants.length ? `<small>${e.lieu ? ic('pin') + esc(e.lieu.slice(0, 60)) : ''}${e.lieu && e.participants.length ? ' · ' : ''}${esc(e.participants.slice(0, 3).join(', '))}${e.participants.length > 3 ? '…' : ''}</small>` : ''}</span>${e.visio ? '<em class="ev-v">Visio</em>' : ''}</a>` },
   mailRow(m){ const from = m.de.replace(/<.*>/, '').replace(/"/g, '').trim() || m.de;
-    return `<a class="ml" href="https://mail.google.com/mail/?authuser=${encodeURIComponent(Google.email())}#inbox/${esc(m.threadId)}" target="_blank" rel="noopener"><span class="ml-av">${esc(initials(from))}</span><span class="ml-b"><b>${esc(from)}</b><span>${esc(m.objet)}</span><small>${esc(m.extrait.slice(0, 110))}</small></span><time>${timeAgo(new Date(m.date).getTime())}</time></a>` },
+    return `<a class="ml" href="#/mails/${esc(m.threadId)}"><span class="ml-av">${esc(initials(from))}</span><span class="ml-b"><b>${esc(from)}</b><span>${esc(m.objet)}</span><small>${esc(m.extrait.slice(0, 110))}</small></span><time>${timeAgo(new Date(m.date).getTime())}</time></a>` },
   noteRow(n){ const late = n.due && !n.done && n.due < Tracking.dayKey(new Date());
     return `<div class="nt ${n.done ? 'done' : ''}"><input type="checkbox" data-nt="${n.id}" ${n.done ? 'checked' : ''} aria-label="Fait"><span class="nt-b">${esc(n.text)}<small>${n.by === 'mira' ? '<em class="by-mira">Mira</em>' : ''}${n.due ? `<span class="${late ? 'late' : ''}">Échéance ${new Date(n.due + 'T12:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'short' })}</span>` : ''}</small></span><button data-ntdel="${n.id}" title="Supprimer" aria-label="Supprimer">${ic('trash')}</button></div>` },
   googleCTA(small){ const linked = Google.linked();
@@ -322,7 +323,7 @@ const Infos = {
         </div>
         <div class="inf-col">
           <section class="card pad"><div class="sec-head"><div><div class="eyebrow">Non lus · 7 derniers jours</div><h2>Mails à traiter</h2></div>${data && Array.isArray(data.mails) ? `<span class="count">${data.mails.length}${data.mails.length >= 12 ? '+' : ''}</span>` : ''}</div><div class="mls">${mails}</div>
-            ${data ? `<p class="note lock" style="margin-top:12px">${ic('lock')} <span>Lecture seule : cliquer sur un mail l’ouvre dans Gmail.</span></p>` : ''}</section>
+            ${data ? `<p class="note lock" style="margin-top:12px">${ic('lock')} <span>Cliquer sur un mail l’ouvre dans le module Mails du Hub, où vous préparez votre réponse.</span></p>` : ''}</section>
           <section class="card pad"><div class="sec-head"><div><div class="eyebrow">Vos notes et celles de Mira</div><h2>À ne pas oublier</h2></div><span class="count">${open.length}</span></div>
             <form class="nt-add full" data-noteform><input class="input" name="t" placeholder="Nouvelle note…" maxlength="200" required><input class="input" type="date" name="d" aria-label="Échéance"><button class="btn sm">Ajouter</button></form>
             <div class="nts">${open.map(n => this.noteRow(n)).join('') || '<p class="quiet">Aucune note en cours. Vous pouvez aussi demander à Mira : « note-moi de relancer tel client vendredi ».</p>'}</div>
@@ -524,7 +525,7 @@ window.DriveModule = DriveModule;
 function adminConnexions(){
   const P = document.getElementById('adminPanel'), roles = DB.trackingRoles || ['Revenue manager'], origin = /^https?:/.test(location.protocol) ? location.origin : 'https://votre-hub.netlify.app';
   P.innerHTML = `<h2 style="font-size:20px">Connexion Google de l’équipe</h2>
-    <p class="note">Pour que chaque personne puisse relier son compte Google (Gmail, Drive, Agenda en <b>lecture seule</b>), le Hub a besoin d’un identifiant Google, à créer une seule fois.</p>
+    <p class="note">Pour que chaque personne puisse relier son compte Google (Gmail, Drive, Agenda), le Hub a besoin d’un identifiant Google, à créer une seule fois.</p>
     <label class="lbl">Identifiant client Google (OAuth Client ID)</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="gId" style="flex:1;min-width:260px" value="${esc(DB.googleClientId || '')}" placeholder="1234567890-xxxxxxxx.apps.googleusercontent.com"><button class="btn" id="gSave">Enregistrer</button></div>
     <details class="howto"><summary>Comment obtenir cet identifiant (10 minutes)</summary><ol>
@@ -533,7 +534,7 @@ function adminConnexions(){
       <li>Dans « Écran de consentement OAuth », choisissez le type <b>Interne</b> (réservé aux comptes @lewys.fr).</li>
       <li>Dans « Identifiants → Créer → ID client OAuth », choisissez « Application Web » et ajoutez dans « Origines JavaScript autorisées » l’adresse du Hub : <code>${esc(origin)}</code></li>
       <li>Copiez l’« ID client » obtenu et collez-le ci-dessus.</li></ol></details>
-    <p class="note lock" style="margin-top:14px">${ic('lock')} <span>Le Hub ne demande que des accès en lecture (gmail.readonly, drive.readonly, calendar.readonly). Aucune modification ni suppression n’est possible depuis le Hub ou par Mira.</span></p>
+    <p class="note lock" style="margin-top:14px">${ic('lock')} <span>Drive et Agenda sont en lecture seule. Pour Gmail, le Hub demande en plus le droit d’enregistrer un brouillon et d’envoyer un mail : il ne sert que lorsque la personne clique elle-même sur « Envoyer ». Mira ne peut rien envoyer, modifier ni supprimer.</span></p>
 
     <h2 style="font-size:20px;margin-top:28px">Claude</h2>
     <p class="note">Chaque personne relie son propre Claude depuis « Mes connexions » (en bas du menu), avec sa clé API personnelle. Rien à régler ici.</p>

@@ -2,9 +2,11 @@
    LEWYS HUB — Connexions (Claude, Google) et assistant Mira
    ---------------------------------------------------------
    RÈGLE ABSOLUE : Mira est en LECTURE SEULE sur Gmail, Drive et Agenda.
-   - Les autorisations Google demandées sont uniquement des accès « readonly ».
    - Ce fichier n'envoie à Google que des requêtes de lecture (GET).
-   Google refuse donc techniquement toute modification ou suppression.
+   - Mira n'a aucun outil pour écrire, envoyer, modifier ou supprimer.
+   Seule exception dans le Hub, hors de Mira : le module Mails (hub-mail.js)
+   peut enregistrer un brouillon et envoyer un mail, uniquement sur un clic
+   de l'utilisateur. Drive et Agenda restent en lecture seule.
    ========================================================= */
 
 /* ---------- Réglages propres à chaque profil (dans son navigateur) ---------- */
@@ -100,7 +102,8 @@ const Claude = {
    GOOGLE — Gmail, Drive, Agenda en LECTURE SEULE
    ========================================================= */
 const Google = {
-  SCOPES: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
+  SCOPES: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
+  hasCompose(){ return String(UStore.get('googleScopes', '')).includes('gmail.compose') },
   tkKey(){ return 'lewysHub.gtok.' + ME.id },
   token(){ try{ const t = JSON.parse(sessionStorage.getItem(this.tkKey())); return t && t.exp > Date.now() + 60000 ? t.tok : null }catch(e){ return null } },
   email(){ return UStore.get('googleEmail', '') },
@@ -124,7 +127,7 @@ const Google = {
     const resp = await new Promise((res, rej) => {
       const c = google.accounts.oauth2.initTokenClient({
         client_id: DB.googleClientId, scope: this.SCOPES.join(' '), hint: this.email() || undefined,
-        prompt: this.linked() ? '' : 'consent', callback: r => r && r.access_token ? res(r) : rej(new Error('Connexion Google refusée.')),
+        prompt: this.linked() && this.hasCompose() ? '' : 'consent', callback: r => r && r.access_token ? res(r) : rej(new Error('Connexion Google refusée.')),
         error_callback: e => rej(new Error(e && e.type === 'popup_closed' ? 'Fenêtre Google fermée.' : 'Connexion Google impossible.'))
       });
       c.requestAccessToken();
@@ -210,7 +213,7 @@ const googleFileId = u => { const m = String(u || '').match(/\/(?:d|folders)\/([
    ========================================================= */
 const PageReader = {
   current(){ const m = location.hash.match(/^#\/outil\/([^/]+)/); return m ? DB.tools.find(t => t.id === m[1]) : null },
-  title(){ const t = this.current(); if(t) return t.name; const h = location.hash; return /^#\/slack/.test(h) ? 'Slack' : /^#\/notion/.test(h) ? 'Notion' : /presse/.test(h) ? 'Revue de presse' : /infos/.test(h) ? 'Infos & agenda' : /admin/.test(h) ? 'Administration' : 'Accueil du Hub' },
+  title(){ const t = this.current(); if(t) return t.name; const h = location.hash; return /^#\/mails/.test(h) ? 'Mails' : /^#\/slack/.test(h) ? 'Slack' : /^#\/notion/.test(h) ? 'Notion' : /presse/.test(h) ? 'Revue de presse' : /infos/.test(h) ? 'Infos & agenda' : /admin/.test(h) ? 'Administration' : 'Accueil du Hub' },
   bridge(frame){ // applications Lewys hébergées ailleurs : elles peuvent répondre si elles intègrent le petit script « hub-bridge.js »
     return new Promise(res => {
       const id = 'r' + Date.now(); const on = e => { if(e.source === frame.contentWindow && e.data && e.data.lewysHub === 'page' && e.data.id === id){ done(e.data.text) } };
@@ -379,9 +382,10 @@ const Connexions = {
       <div class="conn">
         <div class="conn-h"><span class="conn-logo"><img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" alt=""></span><div><b>Google</b><small>Gmail, Drive et Agenda, en lecture seule</small></div><span class="dotchip ${gOk ? 'ok' : gLinked ? 'warn' : 'off'}">${gOk ? 'Connecté' : gLinked ? 'À reconnecter' : 'Non connecté'}</span></div>
         ${gLinked ? `<p class="note" style="margin:10px 0">Compte : <b>${esc(Google.email())}</b>${gOk ? '' : ' — la session a expiré (Google la limite à une heure).'}</p>` : ''}
+        ${gOk && !Google.hasCompose() ? `<p class="note" style="color:var(--danger)">L’envoi de mails depuis le Hub n’est pas encore autorisé pour ce compte. <a href="#" id="gMore">Autoriser l’envoi</a></p>` : ''}
         ${!Google.configured() ? `<p class="note">${isAdmin() ? 'Renseignez d’abord l’identifiant Google du Hub dans <a href="#/admin/connexions" id="gCfg">Administration → Connexions</a>.' : 'La connexion Google n’est pas encore activée : demandez à votre administrateur.'}</p>`
         : `<div style="display:flex;gap:8px;flex-wrap:wrap">${gOk ? '' : `<button class="btn" id="gOn" type="button">${gLinked ? 'Reconnecter Google' : 'Connecter mon compte Google'}</button>`}${gLinked ? '<button class="btn danger" id="gOff" type="button">Déconnecter Google</button>' : ''}</div>`}
-        <p class="note lock">${ic('lock')} <span><b>Lecture seule garantie.</b> Le Hub ne demande à Google que le droit de <b>lire</b> vos mails, fichiers et rendez-vous. Mira ne peut rien envoyer, modifier ni supprimer : Google le refuserait.</span></p>
+        <p class="note lock">${ic('lock')} <span><b>Mira est en lecture seule.</b> Elle lit vos mails, fichiers et rendez-vous, sans pouvoir rien envoyer, modifier ni supprimer. Le seul droit d’écriture demandé à Google sert au module Mails : enregistrer un brouillon et envoyer un mail, <b>uniquement quand vous cliquez sur « Envoyer »</b>.</span></p>
         <div class="err" id="gErr"></div>
       </div>
       ${Apps.connHTML()}
@@ -406,6 +410,7 @@ const Connexions = {
       $id('cOff').onclick = () => { UStore.set('claudeKey', ''); UStore.set('claudeModel', ''); refresh() };
     }
     if($id('gOn')) $id('gOn').onclick = async () => { $id('gErr').textContent = ''; try{ await Google.connect(); toast('Compte Google connecté'); refresh(); route() }catch(e){ $id('gErr').textContent = e.message } };
+    if($id('gMore')) $id('gMore').onclick = async e => { e.preventDefault(); try{ await Google.connect(); toast('Envoi autorisé'); refresh(); route() }catch(er){ $id('gErr').textContent = er.message } };
     if($id('gOff')) $id('gOff').onclick = () => { Google.disconnect(); refresh(); route() };
   }
 };
