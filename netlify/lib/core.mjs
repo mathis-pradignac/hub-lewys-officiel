@@ -11,7 +11,10 @@ import suiviSeed from './seed-suivi.mjs';
 
 const ROLES = ['Administrateur', 'Revenue manager', 'Commercial', 'Communication'];
 const APPS = ['budget', 'groupes', 'audit'];
-const DEFAULT_ADMIN = { login:'mathis', name:'Mathis Pradignac', title:'Fondateur', password:'Lewys2026!' };
+/* Premier compte administrateur, créé au tout premier démarrage du Hub.
+   Seule l'empreinte du mot de passe est conservée ici (le mot de passe lui-même n'apparaît nulle part). */
+const DEFAULT_ADMIN = { login:'mathis', name:'Mathis Pradignac', title:'Fondateur', pw:'e1f927c426ec5c29162195d14a9ae1de:405819c1819c1fbc85ee1236ec3526ab3138784b2964d200342e906197c32a20' };
+const SKIP_KEYS = /^(secret|fails|slackusers\/)/;   // jamais transférés : clé de session propre à chaque Hub, compteurs d'erreurs, caches
 const SESSION_HOURS = 12;
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers:{ 'content-type':'application/json; charset=utf-8', 'cache-control':'no-store' } });
@@ -42,7 +45,7 @@ export function createApi(kv, opts = {}){
   /* ---------- démarrage : premier compte administrateur, données de départ ---------- */
   async function hub(){
     const h = await getv('hub'); if(h) return h;
-    return update('hub', cur => cur && cur.users ? undefined : { users:[{ id:'admin1', login:DEFAULT_ADMIN.login, name:DEFAULT_ADMIN.name, title:DEFAULT_ADMIN.title, role:'Administrateur', photo:'', mustChange:true, pw:scrypt(clientHash(DEFAULT_ADMIN.password)) }] }, null);
+    return update('hub', cur => cur && cur.users ? undefined : { users:[{ id:'admin1', login:DEFAULT_ADMIN.login, name:DEFAULT_ADMIN.name, title:DEFAULT_ADMIN.title, role:'Administrateur', photo:'', mustChange:false, pw:DEFAULT_ADMIN.pw }] }, null);
   }
   async function suivi(){
     const s = await getv('suivi'); if(s) return s;
@@ -313,6 +316,30 @@ export function createApi(kv, opts = {}){
     return null;
   }
 
+  async function exportAll(){
+    const keys = (await kv.list()).filter(k => !SKIP_KEYS.test(k)), data = {};
+    for(const k of keys){ const r = await kv.get(k); if(r) data[k] = r.value }
+    return { format:'lewys-hub-export', version:1, at:Date.now(), data };
+  }
+  async function importAll(dump, me){
+    if(!dump || dump.format !== 'lewys-hub-export' || !dump.data || typeof dump.data !== 'object') throw new HttpError(400, 'Fichier de transfert invalide.');
+    const data = dump.data, keys = Object.keys(data).filter(k => !SKIP_KEYS.test(k) && /^[\w\/.-]{1,200}$/.test(k));
+    let n = 0;
+    for(const k of keys){
+      let v = data[k];
+      if(k === 'hub'){   // comptes de l'ancien Hub ; la personne qui fait le transfert garde son mot de passe actuel
+        if(!v || !Array.isArray(v.users) || !v.users.length) continue;
+        v = structuredClone(v); const cur = (await getv('hub', { users:[] })).users.find(u => u.id === me.id) || me;
+        const mine = v.users.find(u => u.id === me.id) || v.users.find(u => u.login === me.login);
+        if(mine){ mine.pw = cur.pw; mine.mustChange = false; if(mine.id !== me.id){ mine.id = me.id } }
+        else v.users.push(Object.assign({}, cur));
+        v.users.forEach(u => { if(u.id === me.id) u.role = 'Administrateur' });
+      }
+      await update(k, () => v, null); n++;
+    }
+    return { ok:true, keys:n, at:dump.at || null };
+  }
+
   /* ---------- routes ---------- */
   async function handle(req){
     const url = new URL(req.url), parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent), m = req.method;
@@ -411,6 +438,24 @@ export function createApi(kv, opts = {}){
         return json(pub(await refreshPress())) }
     }
 
+    /* ---------- Transfert de toutes les données d'un Hub vers un autre ---------- */
+    if(a === 'export' && m === 'GET'){ needAdmin(me); return json(await exportAll()) }
+    if(a === 'import' && m === 'POST'){ needAdmin(me); const inc = await body(); return json(await importAll(inc, me)) }
+    if(a === 'import-remote' && m === 'POST'){ needAdmin(me);
+      const { url:src, login, hash } = await body(); let base;
+      try{ base = new URL(String(src || '')); }catch(e){ throw new HttpError(400, 'Adresse de l’ancien Hub invalide.') }
+      if(base.protocol !== 'https:' && base.hostname !== 'localhost') throw new HttpError(400, 'L’adresse doit commencer par https://');
+      if(base.origin === new URL(req.url).origin) throw new HttpError(400, 'C’est l’adresse de ce Hub : indiquez celle de l’ancien.');
+      const call = async (path, opt) => { let r; try{ r = await fetchImpl(base.origin + '/api' + path, Object.assign({ signal:AbortSignal.timeout(20000) }, opt)) }catch(e){ throw new HttpError(502, 'Ancien Hub injoignable : vérifiez l’adresse.') }
+        const j = await r.json().catch(() => null);
+        if(r.status === 404 || !j) throw new HttpError(502, 'L’ancien Hub ne propose pas encore le transfert : mettez-le d’abord à jour avec cette version.');
+        if(!r.ok) throw new HttpError(r.status === 401 || r.status === 403 ? 400 : 502, 'Ancien Hub : ' + (j.error || 'erreur ' + r.status));
+        return j };
+      const lg = await call('/login', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ login, hash }) });
+      const dump = await call('/export', { headers:{ authorization:'Bearer ' + lg.token } });
+      return json(await importAll(dump, me));
+    }
+
     throw new HttpError(404, 'Adresse inconnue.');
   }
 
@@ -424,5 +469,6 @@ export function memoryKv(){
   const m = new Map(); let n = 0;
   return { _m:m,
     async get(k){ const r = m.get(k); return r ? { value:structuredClone(r.value), etag:r.etag } : null },
-    async set(k, v, o = {}){ const r = m.get(k); if(o.ifNew && r) return false; if(o.ifMatch && (!r || r.etag !== o.ifMatch)) return false; m.set(k, { value:structuredClone(v), etag:'e' + (++n) }); return true } };
+    async set(k, v, o = {}){ const r = m.get(k); if(o.ifNew && r) return false; if(o.ifMatch && (!r || r.etag !== o.ifMatch)) return false; m.set(k, { value:structuredClone(v), etag:'e' + (++n) }); return true },
+    async list(){ return [...m.keys()] } };
 }

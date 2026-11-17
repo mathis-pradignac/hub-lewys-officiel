@@ -8,6 +8,7 @@ export function blobKv(){
     async set(key, value, o = {}){
       const opt = {}; if(o.ifMatch) opt.onlyIfMatch = o.ifMatch; if(o.ifNew) opt.onlyIfNew = true;
       const r = await s.setJSON(key, value, opt); return !r || r.modified !== false;
-    }
+    },
+    async list(){ const out = []; for await (const page of s.list({ paginate:true })) (page.blobs || []).forEach(b => out.push(b.key)); return out }
   };
 }
