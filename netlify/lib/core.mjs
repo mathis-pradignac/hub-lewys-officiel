@@ -44,7 +44,14 @@ export function createApi(kv, opts = {}){
 
   /* ---------- démarrage : premier compte administrateur, données de départ ---------- */
   async function hub(){
-    const h = await getv('hub'); if(h) return h;
+    const h = await getv('hub');
+    if(h){
+      // Compte administrateur créé par une version précédente avec le mot de passe provisoire, jamais changé :
+      // on le remplace par le mot de passe convenu (un mot de passe déjà personnalisé n'est jamais touché).
+      const old = h.users.find(u => u.id === 'admin1' && u.login === DEFAULT_ADMIN.login && u.mustChange && checkPw(clientHash('Lewys2026!'), u.pw));
+      if(!old) return h;
+      return update('hub', cur => { const u = cur.users.find(x => x.id === 'admin1'); if(!u || !u.mustChange || !checkPw(clientHash('Lewys2026!'), u.pw)) return undefined; u.pw = DEFAULT_ADMIN.pw; u.mustChange = false; return cur }, null);
+    }
     return update('hub', cur => cur && cur.users ? undefined : { users:[{ id:'admin1', login:DEFAULT_ADMIN.login, name:DEFAULT_ADMIN.name, title:DEFAULT_ADMIN.title, role:'Administrateur', photo:'', mustChange:false, pw:DEFAULT_ADMIN.pw }] }, null);
   }
   async function suivi(){
@@ -324,7 +331,7 @@ export function createApi(kv, opts = {}){
   async function importAll(dump, me){
     if(!dump || dump.format !== 'lewys-hub-export' || !dump.data || typeof dump.data !== 'object') throw new HttpError(400, 'Fichier de transfert invalide.');
     const data = dump.data, keys = Object.keys(data).filter(k => !SKIP_KEYS.test(k) && /^[\w\/.-]{1,200}$/.test(k));
-    let n = 0;
+    let n = 0; const reset = [];
     for(const k of keys){
       let v = data[k];
       if(k === 'hub'){   // comptes de l'ancien Hub ; la personne qui fait le transfert garde son mot de passe actuel
@@ -334,10 +341,14 @@ export function createApi(kv, opts = {}){
         if(mine){ mine.pw = cur.pw; mine.mustChange = false; if(mine.id !== me.id){ mine.id = me.id } }
         else v.users.push(Object.assign({}, cur));
         v.users.forEach(u => { if(u.id === me.id) u.role = 'Administrateur' });
+        // Ancien Hub d'une version antérieure : les mots de passe ne sont pas transmis. Ces comptes devront être réinitialisés.
+        const existing = (await getv('hub', { users:[] })).users;
+        v.users.forEach(u => { if(u.pw) return; const ex = existing.find(x => x.id === u.id);
+          if(ex && ex.pw){ u.pw = ex.pw; u.mustChange = !!ex.mustChange } else { u.pw = scrypt(crypto.randomBytes(24).toString('hex')); u.mustChange = true; reset.push(u.name || u.login) } });
       }
       await update(k, () => v, null); n++;
     }
-    return { ok:true, keys:n, at:dump.at || null };
+    return { ok:true, keys:n, at:dump.at || null, reset, partial:!!dump.partial, missing:dump.missing || [] };
   }
 
   /* ---------- routes ---------- */
@@ -446,13 +457,29 @@ export function createApi(kv, opts = {}){
       try{ base = new URL(String(src || '')); }catch(e){ throw new HttpError(400, 'Adresse de l’ancien Hub invalide.') }
       if(base.protocol !== 'https:' && base.hostname !== 'localhost') throw new HttpError(400, 'L’adresse doit commencer par https://');
       if(base.origin === new URL(req.url).origin) throw new HttpError(400, 'C’est l’adresse de ce Hub : indiquez celle de l’ancien.');
-      const call = async (path, opt) => { let r; try{ r = await fetchImpl(base.origin + '/api' + path, Object.assign({ signal:AbortSignal.timeout(20000) }, opt)) }catch(e){ throw new HttpError(502, 'Ancien Hub injoignable : vérifiez l’adresse.') }
+      const call = async (path, opt, soft) => { let r; try{ r = await fetchImpl(base.origin + '/api' + path, Object.assign({ signal:AbortSignal.timeout(20000) }, opt)) }catch(e){ throw new HttpError(502, 'Ancien Hub injoignable : vérifiez l’adresse.') }
         const j = await r.json().catch(() => null);
-        if(r.status === 404 || !j) throw new HttpError(502, 'L’ancien Hub ne propose pas encore le transfert : mettez-le d’abord à jour avec cette version.');
+        if(soft && (r.status === 404 || r.status === 400 || r.status === 403)) return null;
+        if(!j) throw new HttpError(502, 'L’adresse ne répond pas comme un Hub Lewys.');
         if(!r.ok) throw new HttpError(r.status === 401 || r.status === 403 ? 400 : 502, 'Ancien Hub : ' + (j.error || 'erreur ' + r.status));
         return j };
       const lg = await call('/login', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ login, hash }) });
-      const dump = await call('/export', { headers:{ authorization:'Bearer ' + lg.token } });
+      const auth = { headers:{ authorization:'Bearer ' + lg.token } };
+      let dump = await call('/export', auth, true);
+      if(!dump){
+        /* Ancien Hub d'une version antérieure, sans transfert complet : on récupère tout ce qu'il sait montrer à son administrateur */
+        const st = lg.state || await call('/state', auth), data = {}, missing = [];
+        if(st.hub) data.hub = st.hub;
+        if(st.tracking) data.tracking = st.tracking;
+        if(st.suivi && st.suivi.data) data.suivi = { v:st.suivi.v || 1, data:st.suivi.data };
+        if(Array.isArray(st.notes)) data['notes/' + st.me] = st.notes;
+        if(st.prefs) data['prefs/' + st.me] = st.prefs;
+        for(const [app, coll] of [['budget', 'budgets'], ['groupes', 'hotels'], ['groupes', 'requests'], ['groupes', 'ly'], ['audit', 'audits']]){
+          const c = await call('/col/' + app + '/' + coll, auth, true); if(c && c.docs) data['col/' + app + '/' + coll] = c; }
+        const press = await call('/press', auth, true); if(press && Array.isArray(press.items)) data.press = press;
+        missing.push('mots de passe des autres comptes', 'notes et signatures des autres personnes', 'connexions Slack et Notion');
+        dump = { format:'lewys-hub-export', version:1, at:Date.now(), data, partial:true, missing };
+      }
       return json(await importAll(dump, me));
     }
 
