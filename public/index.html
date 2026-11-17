@@ -854,7 +854,7 @@ function adminBackup(){
     <div><label class="lbl">Identifiant administrateur sur l’ancien Hub</label><input class="input" id="trLogin" value="${esc(ME.login)}" autocomplete="off"></div></div>
     <label class="lbl">Mot de passe sur l’ancien Hub</label><input class="input" type="password" id="trPw" autocomplete="off">
     <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="trGo">Lancer le transfert</button><span class="small" id="trMsg"></span></div>
-    <p class="note" style="margin-top:12px">L’ancien Hub doit fonctionner avec la même version que celui-ci. Rien n’y est modifié ni supprimé.</p>
+    <p class="note" style="margin-top:12px">Rien n’est modifié ni supprimé sur l’ancien Hub. S’il n’a pas été mis à jour, le transfert reprend tout ce qu’il peut ; il faudra seulement réinitialiser les mots de passe des autres comptes et reconnecter Slack et Notion.</p>
     <h2 style="font-size:20px;margin-top:28px">Sauvegarde complète</h2>
     <p class="note">Un fichier qui contient toutes les données du serveur. Utile pour garder une copie, ou pour transférer à la main si l’ancien Hub n’est pas joignable.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -862,7 +862,10 @@ function adminBackup(){
       <label class="btn ghost" style="cursor:pointer">Restaurer une sauvegarde<input type="file" accept="application/json" id="bkImp" hidden></label>
     </div>
     <p class="note lock" style="margin-top:14px">${ic('lock')} <span>Ce fichier contient les données de vos clients et les accès Slack et Notion : conservez-le en lieu sûr.</span></p>`;
-  const done=async r=>{ toast(r.keys+' éléments transférés'); try{ Remote.apply(await Remote.req('GET','/state')); Remote.afterLoad() }catch(e){} Shell.refresh(); Suivi.reloadIfOpen&&Suivi.reloadIfOpen(); setTimeout(()=>location.reload(),900) };
+  const done=async r=>{
+    if(r.partial||(r.reset&&r.reset.length)){ const m=$('#trMsg'); if(m) m.innerHTML=`<b>Transfert terminé</b> (${r.keys} éléments).${r.partial?' L’ancien Hub étant d’une version antérieure, ces éléments n’ont pas pu être repris : '+esc(r.missing.join(', '))+'.':''}${r.reset&&r.reset.length?' <b>Mots de passe à réinitialiser</b> dans l’onglet Équipe pour : '+esc(r.reset.join(', '))+'.':''}`;
+      try{ Remote.apply(await Remote.req('GET','/state')); Remote.afterLoad() }catch(e){} Shell.refresh(); toast('Transfert terminé'); return }
+    toast(r.keys+' éléments transférés'); try{ Remote.apply(await Remote.req('GET','/state')); Remote.afterLoad() }catch(e){} Shell.refresh(); Suivi.reloadIfOpen&&Suivi.reloadIfOpen(); setTimeout(()=>location.reload(),900) };
   $('#trGo').onclick=async()=>{
     const url=$('#trUrl').value.trim().replace(/\/+$/,''), login=$('#trLogin').value.trim().toLowerCase(), pw=$('#trPw').value, msg=$('#trMsg');
     if(!url||!login||!pw){ msg.textContent='Renseignez l’adresse, l’identifiant et le mot de passe.'; return }
